@@ -43,3 +43,25 @@ docker-compose down
 ```
 
 You can wipe the database and workspace with `docker-compose down -v` to remove the disk volumes.
+
+## Experiment
+
+To execute the RPC function with cURL generated a session token:
+
+```shell
+curl "127.0.0.1:7350/v2/account/authenticate/device" --data "{\"id\": \""$(uuidgen)"\"}" --user 'defaultkey:'
+```
+
+Use the session token to execute the RPC function as the user:
+
+```shell
+curl "127.0.0.1:7350/v2/rpc/reward" -H 'Authorization: Bearer $SESSION' --data '""'
+```
+
+This will generate an RPC response on the initial response in that day and grant no more until the rollover.
+
+```
+{"payload":"{\"coins_received\":500}"}
+or
+{"payload":"{\"coins_received\":0}"}
+```

@@ -66,8 +66,10 @@ func rpcRewards(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 	}
 	resp.CoinsReceived = int64(0)
 
-	// If last claimed is after 24 hours grant a new reward!
-	if (time.Now().Unix() - dailyReward.LastClaimUnix) > 86400 {
+	// If last claimed is before the new day grant a new reward!
+	t := time.Now()
+	midnight := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.Local)
+	if time.Unix(dailyReward.LastClaimUnix, 0).Before(midnight) {
 		resp.CoinsReceived = 500
 
 		// Update player wallet.
