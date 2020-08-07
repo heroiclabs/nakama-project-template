@@ -49,7 +49,7 @@ func rpcRewards(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 	}
 
 	dailyReward := &dailyReward{
-		LastClaimUnix: time.Now().Unix(),
+		LastClaimUnix: 0,
 	}
 	for _, object := range objects {
 		switch object.GetKey() {
@@ -92,10 +92,18 @@ func rpcRewards(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 			return "", errInternalError
 		}
 
+		dailyReward.LastClaimUnix = time.Now().Unix()
+
 		object, err := json.Marshal(dailyReward)
 		if err != nil {
 			logger.Error("Marshal error: %v", err)
 			return "", errInternalError
+		}
+
+		version := ""
+		if len(objects) > 0 {
+			// Use OCC to prevent concurrent writes.
+			version = objects[0].GetVersion()
 		}
 
 		// Update daily reward storage object for user.
@@ -105,7 +113,7 @@ func rpcRewards(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 			PermissionRead:  1,
 			PermissionWrite: 0, // No client write.
 			Value:           string(object),
-			Version:         objects[0].GetVersion(), // Use OCC to prevent concurrent writes.
+			Version:         version,
 			UserID:          userID,
 		}})
 		if err != nil {
@@ -120,5 +128,6 @@ func rpcRewards(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		return "", errMarshal
 	}
 
+	logger.Debug("rpcRewards resp: %v", string(out))
 	return string(out), nil
 }
