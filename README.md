@@ -1,7 +1,7 @@
 Nakama Project Template
 ===
 
-> An example project template on how to set up and write custom logic for Nakama server.
+> An example project template on how to set up and write custom logic in Nakama server.
 
 ### Prerequisites
 
@@ -18,7 +18,7 @@ The project uses Go modules which should be vendored as normal:
 env GO111MODULE=on GOPRIVATE="github.com" go mod vendor
 ```
 
-### Start
+### Start
 
 The recommended workflow is to use Docker and the compose file to build and run the game server and database resources.
 
