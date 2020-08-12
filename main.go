@@ -30,7 +30,7 @@ var (
 )
 
 const (
-	rpcIdRewards string = "reward"
+	rpcIdRewards string = "rewards"
 )
 
 //noinspection GoUnusedExportedFunction

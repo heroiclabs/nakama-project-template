@@ -58,6 +58,7 @@ func rpcRewards(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 				logger.Error("Unmarshal error: %v", err)
 				return "", errUnmarshal
 			}
+			break
 		}
 	}
 
