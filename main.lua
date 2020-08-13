@@ -18,7 +18,7 @@ local nk = require("nakama")
 local dr = require("daily_rewards")
 local sr = require("sessions")
 
-local RPC_ID_REFRESH = "session"
+local RPC_ID_REFRESH = "refresh"
 local RPC_ID_REWARD = "reward"
 
 -- Register all server functions.

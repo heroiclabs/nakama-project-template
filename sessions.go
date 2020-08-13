@@ -44,17 +44,18 @@ func rpcRefresh(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 	}
 
 	// Use the latest username in the new token.
-	session, exp, err := nk.AuthenticateTokenGenerate(userID, users[0].GetUsername(), vars, 0) // 0 uses system expiry time.
+	token, exp, err := nk.AuthenticateTokenGenerate(userID, users[0].GetUsername(), vars, 0) // 0 uses system expiry time.
 	if err != nil {
 		logger.Error("AuthenticateTokenGenerate error: %v", err)
 		return "", errInternalError
 	}
 
-	logger.Debug("New session with %d expiry time: %v", exp, session)
+	logger.Debug("New session with %d expiry time: %v", exp, token)
 
 	var resp struct {
-		Session string `json:"session"`
+		Session string `json:"token"`
 	}
+	resp.Session = token
 
 	out, err := json.Marshal(resp)
 	if err != nil {

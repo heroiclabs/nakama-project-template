@@ -30,7 +30,7 @@ var (
 )
 
 const (
-	rpcIdRefresh string = "refresh"
+	rpcIdRefresh string = "refreshes"
 	rpcIdRewards string = "rewards"
 )
 

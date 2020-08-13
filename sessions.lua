@@ -43,7 +43,7 @@ function M.rpcRefresh(context, payload)
     nk.logger_debug(string.format("New session with %d expiry time: %q", exp, token))
 
     local resp = {
-        ["session"] = token
+        ["token"] = token
     }
 
     local success, result = pcall(nk.json_encode, resp)
