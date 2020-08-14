@@ -13,6 +13,8 @@ For more documentation have a look at:
 * https://heroiclabs.com/docs/social-in-app-notifications/
 * https://heroiclabs.com/docs/runtime-code-function-reference/
 
+__NOTE__ You can remove the Lua or Go code within this project to develop with just the language you prefer.
+
 ### Prerequisites
 
 The codebase requires these development tools:
@@ -55,6 +57,11 @@ docker-compose down
 You can wipe the database and workspace with `docker-compose down -v` to remove the disk volumes.
 
 ### Run RPC function
+
+These RPC IDs are registered with the server logic:
+
+* "rewards" in Go or as "reward" in Lua.
+* "refreshes" in Go or as "refresh" in Lua.
 
 To execute the RPC function with cURL generated a session token:
 

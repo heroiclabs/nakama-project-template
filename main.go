@@ -30,6 +30,7 @@ var (
 )
 
 const (
+	rpcIdRefresh string = "refreshes"
 	rpcIdRewards string = "rewards"
 )
 
@@ -37,7 +38,10 @@ const (
 func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, initializer runtime.Initializer) error {
 	initStart := time.Now()
 
-	if err := initializer.RegisterRpc(rpcIdRewards, rpcRewards); err != nil {
+	if err := initializer.RegisterRpc(rpcIdRefresh, rpcRefresh); err != nil {
+		return err
+	}
+ 	if err := initializer.RegisterRpc(rpcIdRewards, rpcRewards); err != nil {
 		return err
 	}
 
