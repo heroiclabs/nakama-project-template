@@ -30,7 +30,7 @@ function M.rpcRefresh(context, payload)
     end
 
     local exp = context.user_session_exp
-    if (not exp or (()os.time() - exp) < 21600) then
+    if (not exp or ((os.time() - exp) < 21600)) then
         -- 0 uses system expiry settings.
         exp = 0
     end
