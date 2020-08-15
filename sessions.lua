@@ -39,7 +39,7 @@ function M.rpcRefresh(context, payload)
 
     local success, result = pcall(nk.users_get_id, { context.user_id })
     if (not success) then
-        nk.logger_error(string.format("users_get_id error: %q", objects))
+        nk.logger_error(string.format("users_get_id error: %q", result))
         error({ "internal server error", 13 })
     end
 
