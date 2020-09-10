@@ -51,7 +51,7 @@ func rpcRefresh(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 	}
 
 	// Use the latest username in the new token.
-	token, exp, err := nk.AuthenticateTokenGenerate(userID, users[0].GetUsername(), vars, exp)
+	token, exp, err := nk.AuthenticateTokenGenerate(userID, users[0].GetUsername(), exp, vars)
 	if err != nil {
 		logger.Error("AuthenticateTokenGenerate error: %v", err)
 		return "", errInternalError

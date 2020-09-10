@@ -207,57 +207,18 @@ type Logger interface {
 		Log a message with optional arguments at ERROR level. Arguments are handled in the manner of fmt.Printf.
 	*/
 	Error(format string, v ...interface{})
-
-	// *log.Logger compatibility functions below here.
-
 	/*
-	  Log a message at info level. Arguments are handled in the manner of fmt.Print. Provided for compatibility with log.Logger.
+		Return a logger with the specified field set so that they are included in subsequent logging calls.
 	*/
-	Print(v ...interface{})
+	WithField(key string, v interface{}) Logger
 	/*
-	  Log a message at info level. Arguments are handled in the manner of fmt.Println. Provided for compatibility with log.Logger.
+		Return a logger with the specified fields set so that they are included in subsequent logging calls.
 	*/
-	Println(v ...interface{})
+	WithFields(fields map[string]interface{}) Logger
 	/*
-	  Log a message at info level. Arguments are handled in the manner of fmt.Printf. Provided for compatibility with log.Logger.
+		Returns the fields set in this logger.
 	*/
-	Printf(format string, v ...interface{})
-	/*
-		  Log a message at fatal level and stop the server with a non-0 exit code. Arguments are handled in the manner of fmt.Print.
-
-			Provided for compatibility with log.Logger.
-	*/
-	Fatal(v ...interface{})
-	/*
-	  Log a message at fatal level and stop the server with a non-0 exit code. Arguments are handled in the manner of fmt.Println.
-
-	  Provided for compatibility with log.Logger.
-	*/
-	Fatalln(v ...interface{})
-	/*
-	  Log a message at fatal level and stop the server with a non-0 exit code. Arguments are handled in the manner of fmt.Printf.
-
-	  Provided for compatibility with log.Logger.
-	*/
-	Fatalf(format string, v ...interface{})
-	/*
-	  Log a message at fatal level and panic the server. Arguments are handled in the manner of fmt.Print.
-
-	  Provided for compatibility with log.Logger.
-	*/
-	Panic(v ...interface{})
-	/*
-	  Log a message at fatal level and panic the server. Arguments are handled in the manner of fmt.Println.
-
-	  Provided for compatibility with log.Logger.
-	*/
-	Panicln(v ...interface{})
-	/*
-	  Log a message at fatal level and panic the server. Arguments are handled in the manner of fmt.Printf.
-
-	  Provided for compatibility with log.Logger.
-	*/
-	Panicf(format string, v ...interface{})
+	Fields() map[string]interface{}
 }
 
 /*
@@ -320,6 +281,12 @@ type Initializer interface {
 
 	// RegisterAfterUpdateAccount is used to register a function invoked after the server processes the relevant request.
 	RegisterAfterUpdateAccount(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.UpdateAccountRequest) error) error
+
+	// RegisterBeforeAuthenticateApple can be used to perform pre-authentication checks.
+	RegisterBeforeAuthenticateApple(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.AuthenticateAppleRequest) (*api.AuthenticateAppleRequest, error)) error
+
+	// RegisterAfterAuthenticateApple can be used to perform after successful authentication checks.
+	RegisterAfterAuthenticateApple(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, out *api.Session, in *api.AuthenticateAppleRequest) error) error
 
 	// RegisterBeforeAuthenticateCustom can be used to perform pre-authentication checks.
 	// You can use this to process the input (such as decoding custom tokens) and ensure inter-compatibility between Nakama and your own custom system.
@@ -461,6 +428,12 @@ type Initializer interface {
 	// RegisterAfterPromoteGroupUsers can be used to perform additional logic after user is promoted.
 	RegisterAfterPromoteGroupUsers(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.PromoteGroupUsersRequest) error) error
 
+	// RegisterBeforeDemoteGroupUsers can be used to perform additional logic before user is demoted.
+	RegisterBeforeDemoteGroupUsers(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.DemoteGroupUsersRequest) (*api.DemoteGroupUsersRequest, error)) error
+
+	// RegisterAfterDemoteGroupUsers can be used to perform additional logic after user is demoted.
+	RegisterAfterDemoteGroupUsers(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.DemoteGroupUsersRequest) error) error
+
 	// RegisterBeforeListGroupUsers can be used to perform additional logic before users in a group is listed.
 	RegisterBeforeListGroupUsers(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.ListGroupUsersRequest) (*api.ListGroupUsersRequest, error)) error
 
@@ -502,6 +475,12 @@ type Initializer interface {
 
 	// RegisterAfterListLeaderboardRecordsAroundOwner can be used to perform additional logic after listing records from a leaderboard.
 	RegisterAfterListLeaderboardRecordsAroundOwner(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, out *api.LeaderboardRecordList, in *api.ListLeaderboardRecordsAroundOwnerRequest) error) error
+
+	// RegisterBeforeLinkApple can be used to perform additional logic before linking Apple ID to an account.
+	RegisterBeforeLinkApple(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.AccountApple) (*api.AccountApple, error)) error
+
+	// RegisterAfterLinkApple can be used to perform additional logic after linking Apple ID to an account.
+	RegisterAfterLinkApple(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.AccountApple) error) error
 
 	// RegisterBeforeLinkCustom can be used to perform additional logic before linking custom ID to an account.
 	RegisterBeforeLinkCustom(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.AccountCustom) (*api.AccountCustom, error)) error
@@ -623,6 +602,12 @@ type Initializer interface {
 	// RegisterAfterListTournamentRecordsAroundOwner can be used to perform additional logic after listing tournament records.
 	RegisterAfterListTournamentRecordsAroundOwner(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, out *api.TournamentRecordList, in *api.ListTournamentRecordsAroundOwnerRequest) error) error
 
+	// RegisterBeforeUnlinkApple can be used to perform additional logic before Apple ID is unlinked from an account.
+	RegisterBeforeUnlinkApple(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.AccountApple) (*api.AccountApple, error)) error
+
+	// RegisterAfterUnlinkApple can be used to perform additional logic after Apple ID is unlinked from an account.
+	RegisterAfterUnlinkApple(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.AccountApple) error) error
+
 	// RegisterBeforeUnlinkCustom can be used to perform additional logic before custom ID is unlinked from an account.
 	RegisterBeforeUnlinkCustom(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.AccountCustom) (*api.AccountCustom, error)) error
 
@@ -741,6 +726,17 @@ type Match interface {
 	MatchTerminate(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, dispatcher MatchDispatcher, tick int64, state interface{}, graceSeconds int) interface{}
 }
 
+type AccountUpdate struct {
+	UserID      string
+	Username    string
+	Metadata    map[string]interface{}
+	DisplayName string
+	Timezone    string
+	Location    string
+	LangTag     string
+	AvatarUrl   string
+}
+
 type NotificationSend struct {
 	UserID     string
 	Subject    string
@@ -752,8 +748,14 @@ type NotificationSend struct {
 
 type WalletUpdate struct {
 	UserID    string
-	Changeset map[string]interface{}
+	Changeset map[string]int64
 	Metadata  map[string]interface{}
+}
+
+type WalletUpdateResult struct {
+	UserID   string
+	Updated  map[string]int64
+	Previous map[string]int64
 }
 
 type WalletLedgerItem interface {
@@ -761,7 +763,7 @@ type WalletLedgerItem interface {
 	GetUserID() string
 	GetCreateTime() int64
 	GetUpdateTime() int64
-	GetChangeset() map[string]interface{}
+	GetChangeset() map[string]int64
 	GetMetadata() map[string]interface{}
 }
 
@@ -789,6 +791,7 @@ type StorageDelete struct {
 }
 
 type NakamaModule interface {
+	AuthenticateApple(ctx context.Context, token, username string, create bool) (string, string, bool, error)
 	AuthenticateCustom(ctx context.Context, id, username string, create bool) (string, string, bool, error)
 	AuthenticateDevice(ctx context.Context, id, username string, create bool) (string, string, bool, error)
 	AuthenticateEmail(ctx context.Context, email, password, username string, create bool) (string, string, bool, error)
@@ -798,7 +801,7 @@ type NakamaModule interface {
 	AuthenticateGoogle(ctx context.Context, token, username string, create bool) (string, string, bool, error)
 	AuthenticateSteam(ctx context.Context, token, username string, create bool) (string, string, bool, error)
 
-	AuthenticateTokenGenerate(userID, username string, vars map[string]string, exp int64) (string, int64, error)
+	AuthenticateTokenGenerate(userID, username string, exp int64, vars map[string]string) (string, int64, error)
 
 	AccountGetId(ctx context.Context, userID string) (*api.Account, error)
 	AccountsGetId(ctx context.Context, userIDs []string) ([]*api.Account, error)
@@ -812,6 +815,7 @@ type NakamaModule interface {
 	UsersBanId(ctx context.Context, userIDs []string) error
 	UsersUnbanId(ctx context.Context, userIDs []string) error
 
+	LinkApple(ctx context.Context, userID, token string) error
 	LinkCustom(ctx context.Context, userID, customID string) error
 	LinkDevice(ctx context.Context, userID, deviceID string) error
 	LinkEmail(ctx context.Context, userID, email, password string) error
@@ -821,6 +825,7 @@ type NakamaModule interface {
 	LinkGoogle(ctx context.Context, userID, token string) error
 	LinkSteam(ctx context.Context, userID, token string) error
 
+	UnlinkApple(ctx context.Context, userID, token string) error
 	UnlinkCustom(ctx context.Context, userID, customID string) error
 	UnlinkDevice(ctx context.Context, userID, deviceID string) error
 	UnlinkEmail(ctx context.Context, userID, email string) error
@@ -841,7 +846,7 @@ type NakamaModule interface {
 	StreamSend(mode uint8, subject, subcontext, label, data string, presences []Presence, reliable bool) error
 	StreamSendRaw(mode uint8, subject, subcontext, label string, msg *rtapi.Envelope, presences []Presence, reliable bool) error
 
-	SessionDisconnect(ctx context.Context, sessionID, node string) error
+	SessionDisconnect(ctx context.Context, sessionID string) error
 
 	MatchCreate(ctx context.Context, module string, params map[string]interface{}) (string, error)
 	MatchGet(ctx context.Context, id string) (*api.Match, error)
@@ -850,8 +855,8 @@ type NakamaModule interface {
 	NotificationSend(ctx context.Context, userID, subject string, content map[string]interface{}, code int, sender string, persistent bool) error
 	NotificationsSend(ctx context.Context, notifications []*NotificationSend) error
 
-	WalletUpdate(ctx context.Context, userID string, changeset, metadata map[string]interface{}, updateLedger bool) error
-	WalletsUpdate(ctx context.Context, updates []*WalletUpdate, updateLedger bool) error
+	WalletUpdate(ctx context.Context, userID string, changeset map[string]int64, metadata map[string]interface{}, updateLedger bool) (map[string]int64, map[string]int64, error)
+	WalletsUpdate(ctx context.Context, updates []*WalletUpdate, updateLedger bool) ([]*WalletUpdateResult, error)
 	WalletLedgerUpdate(ctx context.Context, itemID string, metadata map[string]interface{}) (WalletLedgerItem, error)
 	WalletLedgerList(ctx context.Context, userID string, limit int, cursor string) ([]WalletLedgerItem, string, error)
 
@@ -859,6 +864,8 @@ type NakamaModule interface {
 	StorageRead(ctx context.Context, reads []*StorageRead) ([]*api.StorageObject, error)
 	StorageWrite(ctx context.Context, writes []*StorageWrite) ([]*api.StorageObjectAck, error)
 	StorageDelete(ctx context.Context, deletes []*StorageDelete) error
+
+	MultiUpdate(ctx context.Context, accountUpdates []*AccountUpdate, storageWrites []*StorageWrite, walletUpdates []*WalletUpdate, updateLedger bool) ([]*api.StorageObjectAck, []*WalletUpdateResult, error)
 
 	LeaderboardCreate(ctx context.Context, id string, authoritative bool, sortOrder, operator, resetSchedule string, metadata map[string]interface{}) error
 	LeaderboardDelete(ctx context.Context, id string) error

@@ -74,17 +74,19 @@ func rpcRewards(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		resp.CoinsReceived = 500
 
 		// Update player wallet.
-		changeset := map[string]interface{}{
+		changeset := map[string]int64{
 			"coins": resp.CoinsReceived,
 		}
-		if err := nk.WalletUpdate(ctx, userID, changeset, map[string]interface{}{}, false); err != nil {
+		if _, _, err := nk.WalletUpdate(ctx, userID, changeset, map[string]interface{}{}, false); err != nil {
 			logger.Error("WalletUpdate error: %v", err)
 			return "", errInternalError
 		}
 
 		err := nk.NotificationsSend(ctx, []*runtime.NotificationSend{{
-			Code:       1001,
-			Content:    changeset,
+			Code: 1001,
+			Content: map[string]interface{}{
+				"coins": changeset["coins"],
+			},
 			Persistent: true,
 			Sender:     "", // Server sent.
 			Subject:    "You've received your daily reward!",
