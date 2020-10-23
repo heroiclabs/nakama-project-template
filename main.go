@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/heroiclabs/nakama-common/runtime"
 	"time"
 )
@@ -30,18 +31,37 @@ var (
 )
 
 const (
-	rpcIdRefresh string = "refreshes"
-	rpcIdRewards string = "rewards"
+	rpcIdRefresh   = "refreshes"
+	rpcIdRewards   = "rewards"
+	rpcIdFindMatch = "find_match"
 )
 
 //noinspection GoUnusedExportedFunction
 func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, initializer runtime.Initializer) error {
 	initStart := time.Now()
 
+	marshaler := &jsonpb.Marshaler{
+		EnumsAsInts: true,
+	}
+	unmarshaler := &jsonpb.Unmarshaler{
+		AllowUnknownFields: false,
+	}
+
 	if err := initializer.RegisterRpc(rpcIdRefresh, rpcRefresh); err != nil {
 		return err
 	}
  	if err := initializer.RegisterRpc(rpcIdRewards, rpcRewards); err != nil {
+		return err
+	}
+	if err := initializer.RegisterRpc(rpcIdFindMatch, rpcFindMatch(marshaler, unmarshaler)); err != nil {
+		return err
+	}
+	if err := initializer.RegisterMatch(moduleName, func(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule) (runtime.Match, error) {
+		return &MatchHandler{
+			marshaler:   marshaler,
+			unmarshaler: unmarshaler,
+		}, nil
+	}); err != nil {
 		return err
 	}
 
