@@ -50,18 +50,25 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 	if err := initializer.RegisterRpc(rpcIdRefresh, rpcRefresh); err != nil {
 		return err
 	}
+
  	if err := initializer.RegisterRpc(rpcIdRewards, rpcRewards); err != nil {
 		return err
 	}
+
 	if err := initializer.RegisterRpc(rpcIdFindMatch, rpcFindMatch(marshaler, unmarshaler)); err != nil {
 		return err
 	}
+
 	if err := initializer.RegisterMatch(moduleName, func(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule) (runtime.Match, error) {
 		return &MatchHandler{
 			marshaler:   marshaler,
 			unmarshaler: unmarshaler,
 		}, nil
 	}); err != nil {
+		return err
+	}
+
+	if err := SingleDeviceLimiter(nk, initializer); err != nil {
 		return err
 	}
 
