@@ -92,7 +92,7 @@ type MatchState struct {
 	nextGameRemainingTicks int64
 }
 
-func (m MatchHandler) MatchInit(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, params map[string]interface{}) (interface{}, int, string) {
+func (m *MatchHandler) MatchInit(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, params map[string]interface{}) (interface{}, int, string) {
 	fast, ok := params["fast"].(bool)
 	if !ok {
 		logger.Error("invalid match init parameter \"fast\"")
@@ -119,7 +119,7 @@ func (m MatchHandler) MatchInit(ctx context.Context, logger runtime.Logger, db *
 	}, tickRate, string(labelJSON)
 }
 
-func (m MatchHandler) MatchJoinAttempt(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, presence runtime.Presence, metadata map[string]string) (interface{}, bool, string) {
+func (m *MatchHandler) MatchJoinAttempt(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, presence runtime.Presence, metadata map[string]string) (interface{}, bool, string) {
 	s := state.(*MatchState)
 
 	// Check if it's a user attempting to rejoin after a disconnect.
@@ -144,7 +144,7 @@ func (m MatchHandler) MatchJoinAttempt(ctx context.Context, logger runtime.Logge
 	return s, true, ""
 }
 
-func (m MatchHandler) MatchJoin(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, presences []runtime.Presence) interface{} {
+func (m *MatchHandler) MatchJoin(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, presences []runtime.Presence) interface{} {
 	s := state.(*MatchState)
 	t := time.Now().UTC()
 
@@ -202,7 +202,7 @@ func (m MatchHandler) MatchJoin(ctx context.Context, logger runtime.Logger, db *
 	return s
 }
 
-func (m MatchHandler) MatchLeave(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, presences []runtime.Presence) interface{} {
+func (m *MatchHandler) MatchLeave(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, presences []runtime.Presence) interface{} {
 	s := state.(*MatchState)
 
 	for _, presence := range presences {
@@ -212,7 +212,7 @@ func (m MatchHandler) MatchLeave(ctx context.Context, logger runtime.Logger, db 
 	return s
 }
 
-func (m MatchHandler) MatchLoop(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, messages []runtime.MatchData) interface{} {
+func (m *MatchHandler) MatchLoop(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, messages []runtime.MatchData) interface{} {
 	s := state.(*MatchState)
 
 	if len(s.presences) + s.joinsInProgress == 0 {
@@ -415,7 +415,7 @@ func (m MatchHandler) MatchLoop(ctx context.Context, logger runtime.Logger, db *
 	return s
 }
 
-func (m MatchHandler) MatchTerminate(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, graceSeconds int) interface{} {
+func (m *MatchHandler) MatchTerminate(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, graceSeconds int) interface{} {
 	return state
 }
 
