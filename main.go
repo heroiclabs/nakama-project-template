@@ -68,7 +68,7 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		return err
 	}
 
-	if err := SingleDeviceLimiter(nk, initializer); err != nil {
+	if err := registerSessionEvents(db, nk, initializer); err != nil {
 		return err
 	}
 
