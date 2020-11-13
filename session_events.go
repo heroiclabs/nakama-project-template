@@ -61,7 +61,7 @@ WHERE
     id = $1;
 `
 		_, err := db.ExecContext(ctx2, query, userID)
-		if err != nil && err != context.Canceled {
+		if err != nil && err != context.DeadlineExceeded {
 			logger.WithField("err", err).Error("db.ExecContext last online update error.")
 			return
 		}
