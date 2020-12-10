@@ -77,6 +77,7 @@ function rpcReward(context: nkruntime.Context, logger: nkruntime.Logger, nk: nkr
             nk.notificationsSend([notification]);
         } catch (error) {
             logger.error('notificationsSend error: %q', error);
+            throw error;
         }
 
         dailyReward.lastClaimUnix = msecToSec(Date.now());
