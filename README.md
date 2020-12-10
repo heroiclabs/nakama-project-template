@@ -107,7 +107,7 @@ To join one of these matches check the [documentation on individual client libra
 
 Install the runtime TS definitions:
 ```bash
-npm i 'https://github.com/heroiclabs/nakama-common#spe-add-js-runtime-ts-definitions'
+npm i 'https://github.com/heroiclabs/nakama-common#nakama3'
 ```
 
 Bundle the examples:

@@ -13,10 +13,24 @@
 // limitations under the License.
 
 const rpcIdRewards = 'rewards_js';
+const rpcIdFindMatch = 'find_match_js';
 
 function InitModule(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, initializer: nkruntime.Initializer) {
     try {
         initializer.registerRpc(rpcIdRewards, rpcReward);
+
+        initializer.registerRpc(rpcIdFindMatch, rpcFindMatch);
+
+        initializer.registerMatch(moduleName, {
+            matchInit,
+            matchJoinAttempt,
+            matchJoin,
+            matchLeave,
+            matchLoop,
+            matchTerminate,
+        });
+
+        logger.info('JavaScript plugin loaded.');
     } catch(e) {
         logger.debug('JavaScript runtime exception: %s, msg: %s', e.name, e.message);
         throw e;

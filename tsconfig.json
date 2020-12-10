@@ -1,7 +1,10 @@
 {
   "files": [
+    "./main.ts",
     "./daily_rewards.ts",
-    "./main.ts"
+    "./messages.ts",
+    "./match_handler.ts",
+    "./match_rpc.ts"
   ],
   "compilerOptions": {
     "typeRoots": [
@@ -10,4 +13,3 @@
     "outFile": "js/index.js"
   }
 }
-
