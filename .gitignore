@@ -214,4 +214,10 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
+# Javascript
+package.json
+package-lock.json
+node_modules
+js/
+
 # End of https://www.toptal.com/developers/gitignore/api/go,sublimetext,windows,linux,macos,intellij+all

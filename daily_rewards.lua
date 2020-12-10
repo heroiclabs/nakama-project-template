@@ -56,10 +56,10 @@ function M.rpcReward(context, payload)
     }
 
     local dt = os.date("*t")
-    local rem = (dt.hour * -3600 - dt.min * 60 - dt.sec) % 86400
+    local elapsed_sec_from_midnight = (dt.hour * 3600 + dt.min * 60 + dt.sec) % 86400
 
     -- If last claimed is before the new day grant a new reward!
-    if (dailyReward.last_claim_unix < (os.time() - rem)) then
+    if (dailyReward.last_claim_unix < (os.time() - elapsed_sec_from_midnight)) then
         resp.coins_received = 500
 
         -- Update player wallet.
@@ -82,7 +82,7 @@ function M.rpcReward(context, payload)
         }
         local success, result = pcall(nk.notifications_send, { notification })
         if (not success) then
-            nk.logger_error(string.format("wallet_update error: %q", result))
+            nk.logger_error(string.format("notifications_send error: %q", result))
             error({ "internal server error", 13 })
         end
 

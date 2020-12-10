@@ -1,0 +1,13 @@
+{
+  "files": [
+    "./daily_rewards.ts",
+    "./main.ts"
+  ],
+  "compilerOptions": {
+    "typeRoots": [
+      "./node_modules"
+    ],
+    "outFile": "js/index.js"
+  }
+}
+
