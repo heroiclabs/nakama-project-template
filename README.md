@@ -101,3 +101,18 @@ This will return one or more match IDs:
 ```
 
 To join one of these matches check the [documentation on individual client libraries here](https://heroiclabs.com/docs/gameplay-multiplayer-realtime/#join-a-match).
+
+
+### Typescript definitions for JS runtime
+
+Install the runtime TS definitions:
+```bash
+npm i 'https://github.com/heroiclabs/nakama-common#spe-add-js-runtime-ts-definitions'
+```
+
+Bundle the examples:
+```bash
+tsc
+```
+
+The output will be in `js/index.js`.
