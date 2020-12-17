@@ -29,7 +29,6 @@ let rpcFindMatch: nkruntime.RpcFunction = function (ctx: nkruntime.Context, logg
         throw error;
     }
 
-
     let matches: nkruntime.Match[];
     try {
         const query = `+label.open:1 +label.fast:${request.fast ? 1 : 0}`;

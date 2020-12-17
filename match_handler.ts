@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-const moduleName = "tic-tac-toe";
+const moduleName = "tic-tac-toe_js";
 const tickRate = 5;
 const maxEmptySec = 30;
 const delaybetweenGamesSec = 5;
@@ -21,20 +21,19 @@ const turnTimeNormalSec = 20;
 
 const winningPositions: number[][] = [
     [0, 1, 2],
-	[3, 4, 5],
-	[6, 7, 8],
-	[0, 3, 6],
-	[1, 4, 7],
-	[2, 5, 8],
-	[0, 4, 8],
-	[2, 4, 6],
+    [3, 4, 5],
+    [6, 7, 8],
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8],
+    [0, 4, 8],
+    [2, 4, 6],
 ]
 
 interface MatchLabel {
     open: number
     fast: number
 }
-
 
 interface MatchState {
     // Match label
@@ -157,7 +156,7 @@ let matchJoin: nkruntime.MatchJoinFunction = function(ctx: nkruntime.Context, lo
                 deadline: t + Math.floor(s.deadlineRemainingTicks/tickRate),
             }
             msg = update;
-        } else if (s.board != null && s.marks != null && s.marks != null) {
+        } else if (s.board != null && s.marks != null && s.marks[presence.userId]) {
             // There's no game in progress but we still have a completed game that the user was part of.
             // They likely disconnected before the game ended, and have since forfeited because they took too long to return.
             opCode = OpCode.DONE
@@ -176,7 +175,7 @@ let matchJoin: nkruntime.MatchJoinFunction = function(ctx: nkruntime.Context, lo
         }
     }
 
-    const label: MatchLabel = s.label as MatchLabel;
+    const label = s.label as MatchLabel;
 
     // Check if match was open to new players, but should now be closed.
     if (Object.keys(s.presences).length >= 2 && s.label.open != 0) {
@@ -190,8 +189,8 @@ let matchJoin: nkruntime.MatchJoinFunction = function(ctx: nkruntime.Context, lo
 
 let matchLeave: nkruntime.MatchLeaveFunction = function(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, dispatcher: nkruntime.MatchDispatcher, tick: number, state: MatchState, presences: nkruntime.Presence[]) {
     var s: MatchState = state as MatchState;
-
     for (let presence of presences) {
+        logger.info("Player: %s left match: %s.", presence.userId, ctx.matchId);
         s.presences[presence.userId] = null;
     }
 
@@ -200,6 +199,7 @@ let matchLeave: nkruntime.MatchLeaveFunction = function(ctx: nkruntime.Context, 
 
 let matchLoop: nkruntime.MatchLoopFunction = function(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, dispatcher: nkruntime.MatchDispatcher, tick: number, state: MatchState, messages: nkruntime.MatchMessage[]) {
     var s: MatchState = state as MatchState;
+    logger.debug('Running match loop. Tick: %d', tick);
 
     if (Object.keys(s.presences).length + s.joinsInProgress === 0) {
         s.emptyTicks++;
@@ -277,7 +277,6 @@ let matchLoop: nkruntime.MatchLoopFunction = function(ctx: nkruntime.Context, lo
                     continue;
                 }
 
-                // TODO: Unsure what happens here if the message is not of type MoveMessage, will this raise an exception?
                 let msg = {} as MoveMessage;
                 try {
                     msg = JSON.parse(message.data);
@@ -313,7 +312,7 @@ let matchLoop: nkruntime.MatchLoopFunction = function(ctx: nkruntime.Context, lo
                     // Update state to reflect the tie, and schedule the next game.
                     s.playing = false;
                     s.deadlineRemainingTicks = 0;
-                    s.nextGameRemainingTicks = 0;
+                    s.nextGameRemainingTicks = delaybetweenGamesSec * tickRate;
                 }
 
                 let opCode: OpCode
@@ -352,7 +351,7 @@ let matchLoop: nkruntime.MatchLoopFunction = function(ctx: nkruntime.Context, lo
         if (s.deadlineRemainingTicks <= 0 ) {
             // The player has run out of time to submit their move.
             s.playing = false;
-            s.winner = Mark.O ? Mark.X : Mark.O;
+            s.winner = s.mark === Mark.O ? Mark.X : Mark.O;
             s.deadlineRemainingTicks = 0;
             s.nextGameRemainingTicks = delaybetweenGamesSec * tickRate;
 

@@ -20,7 +20,6 @@ enum OpCode {
 type BoardPosition = 0|1|2|3|4|5|6|7|8
 type Message = StartMessage|UpdateMessage|DoneMessage|MoveMessage|RpcFindMatchRequest|RpcFindMatchResponse
 
-
 // Message data sent by server to clients representing a new game round starting.
 interface StartMessage {
     // The current state of the board.
