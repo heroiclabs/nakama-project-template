@@ -1,6 +1,7 @@
 enum Mark {
     X = 0,
     O = 1,
+    UNDEFINED = 2,
 }
 
 // The complete set of opcodes used for communication between clients and server.
@@ -19,13 +20,14 @@ enum OpCode {
 
 type BoardPosition = 0|1|2|3|4|5|6|7|8
 type Message = StartMessage|UpdateMessage|DoneMessage|MoveMessage|RpcFindMatchRequest|RpcFindMatchResponse
+type Board = (Mark|null)[]
 
 // Message data sent by server to clients representing a new game round starting.
 interface StartMessage {
     // The current state of the board.
-    board: Mark[]
+    board: Board
     // The assignments of the marks to players for this round.
-    marks: {[userID: string]: Mark}
+    marks: {[userID: string]: Mark | null}
     // Whose turn it is to play.
     mark: Mark
     // The deadline time by which the player must submit their move, or forfeit.
@@ -35,7 +37,7 @@ interface StartMessage {
 // A game state update sent by the server to clients.
 interface UpdateMessage {
     // The current state of the board.
-    board: Mark[]
+    board: Board
     // Whose turn it is to play.
     mark: Mark
     // The deadline time by which the player must submit their move, or forfeit.
@@ -45,12 +47,12 @@ interface UpdateMessage {
 // Complete game round with winner announcement.
 interface DoneMessage {
     // The final state of the board.
-    board: Mark[]
+    board: Board
     // The winner of the game, if any. Unspecified if it's a draw.
-    winner: Mark
+    winner: Mark | null
     // Winner board positions, if any. Used to display the row, column, or diagonal that won the game.
     // May be empty if it's a draw or the winner is by forfeit.
-    winnerPositions: BoardPosition[]
+    winnerPositions: BoardPosition[] | null
     // Next round start time.
     nextGameStart: number
 }
