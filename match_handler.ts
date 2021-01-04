@@ -144,34 +144,28 @@ let matchJoin: nkruntime.MatchJoinFunction = function(ctx: nkruntime.Context, lo
         s.joinsInProgress--;
 
         // Check if we must send a message to this user to update them on the current game state.
-        var opCode: OpCode;
-        var msg: Message = null;
-
         if (s.playing) {
             // There's a game still currently in progress, the player is re-joining after a disconnect. Give them a state update.
-            opCode = OpCode.UPDATE;
             let update: UpdateMessage = {
                 board: s.board,
                 mark: s.mark,
                 deadline: t + Math.floor(s.deadlineRemainingTicks/tickRate),
             }
-            msg = update;
+
+            // Send a message to the user that just joined.
+            dispatcher.broadcastMessage(OpCode.UPDATE, JSON.stringify(update));
         } else if (s.board != null && s.marks != null && s.marks[presence.userId]) {
             // There's no game in progress but we still have a completed game that the user was part of.
             // They likely disconnected before the game ended, and have since forfeited because they took too long to return.
-            opCode = OpCode.DONE
             let done: DoneMessage = {
                 board: s.board,
                 winner: s.winner,
                 winnerPositions: s.winnerPositions,
                 nextGameStart: t + Math.floor(s.nextGameRemainingTicks/tickRate)
             }
-            msg = done;
-        }
 
-         // Send a message to the user that just joined, if one is needed based on the logic above.
-        if (msg != null) {
-            dispatcher.broadcastMessage(opCode, JSON.stringify(msg))
+            // Send a message to the user that just joined.
+            dispatcher.broadcastMessage(OpCode.DONE, JSON.stringify(done))
         }
     }
 

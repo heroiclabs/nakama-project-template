@@ -39,7 +39,7 @@ let rpcFindMatch: nkruntime.RpcFunction = function (ctx: nkruntime.Context, logg
     }
 
     let matchIds: string[] = [];
-    if(matches.length > 0) {
+    if (matches.length > 0) {
         // There are one or more ongoing matches the user could join.
         matchIds = matches.map(m => m.matchId);
     } else {
@@ -53,6 +53,5 @@ let rpcFindMatch: nkruntime.RpcFunction = function (ctx: nkruntime.Context, logg
     }
 
     let res: RpcFindMatchResponse = { matchIds };
-
     return JSON.stringify(res);
 }

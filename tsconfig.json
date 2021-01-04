@@ -7,9 +7,14 @@
     "./match_rpc.ts"
   ],
   "compilerOptions": {
+    "target": "es5",
     "typeRoots": [
       "./node_modules"
     ],
-    "outFile": "js/index.js"
+    "outFile": "./build/index.js",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
   }
 }
