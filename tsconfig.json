@@ -1,13 +1,20 @@
 {
   "files": [
+    "./main.ts",
     "./daily_rewards.ts",
-    "./main.ts"
+    "./messages.ts",
+    "./match_handler.ts",
+    "./match_rpc.ts"
   ],
   "compilerOptions": {
+    "target": "es5",
     "typeRoots": [
       "./node_modules"
     ],
-    "outFile": "js/index.js"
+    "outFile": "./build/index.js",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
   }
 }
-

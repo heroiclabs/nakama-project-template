@@ -103,16 +103,23 @@ This will return one or more match IDs:
 To join one of these matches check the [documentation on individual client libraries here](https://heroiclabs.com/docs/gameplay-multiplayer-realtime/#join-a-match).
 
 
-### Typescript definitions for JS runtime
+### TypeScript definitions for the JavaScript runtime
+
+For a detailed guide on setting up TypeScript, check our [TypeScript setup docs](https://heroiclabs.com/docs/runtime-code-typescript-setup/#initialize-the-project).
+
+#### Quick Guide
+
+Prerequisites:
+ - npm
+ - tsc
 
 Install the runtime TS definitions:
 ```bash
-npm i 'https://github.com/heroiclabs/nakama-common#spe-add-js-runtime-ts-definitions'
+npm i 'https://github.com/heroiclabs/nakama-common'
 ```
 
-Bundle the examples:
+To bundle the JavaScript example run:
 ```bash
 tsc
 ```
-
-The output will be in `js/index.js`.
+The bundled output JavaScript code should be in `build/index.js`.

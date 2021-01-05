@@ -28,9 +28,9 @@ function rpcReward(context: nkruntime.Context, logger: nkruntime.Logger, nk: nkr
     }
     var objects: nkruntime.StorageObject[];
     try {
-        objects = nk.storageRead([objectId]);
-    } catch(error) {
-        logger.error('storageRead error: %s', objects);
+        objects = nk.storageRead([ objectId ]);
+    } catch (error) {
+        logger.error('storageRead error: %s', error);
         throw error;
     }
 
@@ -95,7 +95,7 @@ function rpcReward(context: nkruntime.Context, logger: nkruntime.Logger, nk: nkr
         }
 
         try {
-            nk.storageWrite([write])
+            nk.storageWrite([ write ])
         } catch (error) {
             logger.error('storageWrite error: %q', error);
             throw error;
@@ -103,7 +103,6 @@ function rpcReward(context: nkruntime.Context, logger: nkruntime.Logger, nk: nkr
     }
 
     var result = JSON.stringify(resp);
-
     logger.debug('rpcReward resp: %q', result)
 
     return result;
