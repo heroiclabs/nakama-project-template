@@ -88,6 +88,8 @@ package runtime
 import (
 	"context"
 	"database/sql"
+	"os"
+
 	"github.com/heroiclabs/nakama-common/api"
 	"github.com/heroiclabs/nakama-common/rtapi"
 )
@@ -281,6 +283,12 @@ type Initializer interface {
 
 	// RegisterAfterUpdateAccount is used to register a function invoked after the server processes the relevant request.
 	RegisterAfterUpdateAccount(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.UpdateAccountRequest) error) error
+
+	// RegisterBeforeSessionRefresh can be used to perform pre-refresh checks.
+	RegisterBeforeSessionRefresh(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.SessionRefreshRequest) (*api.SessionRefreshRequest, error)) error
+
+	// RegisterAfterSessionRefresh can be used to perform after successful refresh checks.
+	RegisterAfterSessionRefresh(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, out *api.Session, in *api.SessionRefreshRequest) error) error
 
 	// RegisterBeforeAuthenticateApple can be used to perform pre-authentication checks.
 	RegisterBeforeAuthenticateApple(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.AuthenticateAppleRequest) (*api.AuthenticateAppleRequest, error)) error
@@ -700,6 +708,7 @@ type MatchmakerEntry interface {
 	GetPresence() Presence
 	GetTicket() string
 	GetProperties() map[string]interface{}
+	GetPartyId() string
 }
 
 type MatchData interface {
@@ -825,6 +834,8 @@ type NakamaModule interface {
 	LinkGoogle(ctx context.Context, userID, token string) error
 	LinkSteam(ctx context.Context, userID, token string) error
 
+	ReadFile(path string) (*os.File, error)
+
 	UnlinkApple(ctx context.Context, userID, token string) error
 	UnlinkCustom(ctx context.Context, userID, customID string) error
 	UnlinkDevice(ctx context.Context, userID, deviceID string) error
@@ -887,7 +898,12 @@ type NakamaModule interface {
 	GroupCreate(ctx context.Context, userID, name, creatorID, langTag, description, avatarUrl string, open bool, metadata map[string]interface{}, maxCount int) (*api.Group, error)
 	GroupUpdate(ctx context.Context, id, name, creatorID, langTag, description, avatarUrl string, open bool, metadata map[string]interface{}, maxCount int) error
 	GroupDelete(ctx context.Context, id string) error
+	GroupUserJoin(ctx context.Context, groupID, userID, username string) error
+	GroupUserLeave(ctx context.Context, groupID, userID, username string) error
+	GroupUsersAdd(ctx context.Context, groupID string, userIDs []string) error
 	GroupUsersKick(ctx context.Context, groupID string, userIDs []string) error
+	GroupUsersPromote(ctx context.Context, groupID string, userIDs []string) error
+	GroupUsersDemote(ctx context.Context, groupID string, userIDs []string) error
 	GroupUsersList(ctx context.Context, id string, limit int, state *int, cursor string) ([]*api.GroupUserList_GroupUser, string, error)
 	UserGroupsList(ctx context.Context, userID string, limit int, state *int, cursor string) ([]*api.UserGroupList_UserGroup, string, error)
 

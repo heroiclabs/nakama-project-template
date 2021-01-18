@@ -2,6 +2,8 @@ console:
   max_message_size_bytes: 409600
 logger:
   level: "DEBUG"
+runtime:
+  js_entrypoint: "build/index.js"
 session:
   token_expiry_sec: 7200 # 2 hours
 socket:

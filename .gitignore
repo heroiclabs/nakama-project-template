@@ -1,4 +1,3 @@
-build/
 *.zip
 
 # Created by https://www.toptal.com/developers/gitignore/api/go,sublimetext,windows,linux,macos,intellij+all
