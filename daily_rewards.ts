@@ -65,13 +65,12 @@ function rpcReward(context: nkruntime.Context, logger: nkruntime.Logger, nk: nkr
             throw error;
         }
 
-        var notification: nkruntime.Notification = {
+        var notification: nkruntime.NotificationRequest = {
             code: 1001,
             content: changeset,
             persistent: true,
-            sender: '',
             subject: "You've received your daily reward!",
-            userID: context.userId,
+            userId: context.userId,
         }
         try {
             nk.notificationsSend([notification]);
