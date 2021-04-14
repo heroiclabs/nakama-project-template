@@ -88,6 +88,8 @@ package runtime
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
 	"os"
 
 	"github.com/heroiclabs/nakama-common/api"
@@ -290,6 +292,12 @@ type Initializer interface {
 	// RegisterAfterSessionRefresh can be used to perform after successful refresh checks.
 	RegisterAfterSessionRefresh(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, out *api.Session, in *api.SessionRefreshRequest) error) error
 
+	// RegisterBeforeSessionLogout can be used to perform pre-logout checks.
+	RegisterBeforeSessionLogout(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.SessionLogoutRequest) (*api.SessionLogoutRequest, error)) error
+
+	// RegisterAfterSessionLogout can be used to perform after successful logout checks.
+	RegisterAfterSessionLogout(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.SessionLogoutRequest) error) error
+
 	// RegisterBeforeAuthenticateApple can be used to perform pre-authentication checks.
 	RegisterBeforeAuthenticateApple(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.AuthenticateAppleRequest) (*api.AuthenticateAppleRequest, error)) error
 
@@ -381,6 +389,12 @@ type Initializer interface {
 
 	// RegisterAfterImportFacebookFriends can be used to perform additional logic after Facebook friends are imported.
 	RegisterAfterImportFacebookFriends(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.ImportFacebookFriendsRequest) error) error
+
+	// RegisterBeforeImportSteamFriends can be used to perform additional logic before Facebook friends are imported.
+	RegisterBeforeImportSteamFriends(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.ImportSteamFriendsRequest) (*api.ImportSteamFriendsRequest, error)) error
+
+	// RegisterAfterImportSteamFriends can be used to perform additional logic after Facebook friends are imported.
+	RegisterAfterImportSteamFriends(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.ImportSteamFriendsRequest) error) error
 
 	// RegisterBeforeCreateGroup can be used to perform additional logic before a group is created.
 	RegisterBeforeCreateGroup(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.CreateGroupRequest) (*api.CreateGroupRequest, error)) error
@@ -533,10 +547,10 @@ type Initializer interface {
 	RegisterAfterLinkGoogle(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.AccountGoogle) error) error
 
 	// RegisterBeforeLinkSteam can be used to perform additional logic before linking Steam to an account.
-	RegisterBeforeLinkSteam(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.AccountSteam) (*api.AccountSteam, error)) error
+	RegisterBeforeLinkSteam(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.LinkSteamRequest) (*api.LinkSteamRequest, error)) error
 
 	// RegisterAfterLinkSteam can be used to perform additional logic after linking Steam to an account.
-	RegisterAfterLinkSteam(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.AccountSteam) error) error
+	RegisterAfterLinkSteam(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.LinkSteamRequest) error) error
 
 	// RegisterBeforeListMatches can be used to perform additional logic before listing matches.
 	RegisterBeforeListMatches(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.ListMatchesRequest) (*api.ListMatchesRequest, error)) error
@@ -609,6 +623,24 @@ type Initializer interface {
 
 	// RegisterAfterListTournamentRecordsAroundOwner can be used to perform additional logic after listing tournament records.
 	RegisterAfterListTournamentRecordsAroundOwner(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, out *api.TournamentRecordList, in *api.ListTournamentRecordsAroundOwnerRequest) error) error
+
+	// RegisterBeforeValidatePurchaseApple can be used to perform additional logic before validating an Apple Store IAP receipt.
+	RegisterBeforeValidatePurchaseApple(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.ValidatePurchaseAppleRequest) (*api.ValidatePurchaseAppleRequest, error)) error
+
+	// RegisterAfterValidatePurchaseApple can be used to perform additional logic after validating an Apple Store IAP receipt.
+	RegisterAfterValidatePurchaseApple(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, out *api.ValidatePurchaseResponse, in *api.ValidatePurchaseAppleRequest) error) error
+
+	// RegisterBeforeValidatePurchaseGoogle can be used to perform additional logic before validating a Google Play Store IAP receipt.
+	RegisterBeforeValidatePurchaseGoogle(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.ValidatePurchaseGoogleRequest) (*api.ValidatePurchaseGoogleRequest, error)) error
+
+	// RegisterAfterValidatePurchaseGoogle can be used to perform additional logic after validating a Google Play Store IAP receipt.
+	RegisterAfterValidatePurchaseGoogle(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, out *api.ValidatePurchaseResponse, in *api.ValidatePurchaseGoogleRequest) error) error
+
+	// RegisterBeforeValidatePurchaseHuawei can be used to perform additional logic before validating an Huawei App Gallery IAP receipt.
+	RegisterBeforeValidatePurchaseHuawei(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.ValidatePurchaseHuaweiRequest) (*api.ValidatePurchaseHuaweiRequest, error)) error
+
+	// RegisterAfterValidatePurchaseHuawei can be used to perform additional logic after validating an Huawei App Gallery IAP receipt.
+	RegisterAfterValidatePurchaseHuawei(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, out *api.ValidatePurchaseResponse, in *api.ValidatePurchaseHuaweiRequest) error) error
 
 	// RegisterBeforeUnlinkApple can be used to perform additional logic before Apple ID is unlinked from an account.
 	RegisterBeforeUnlinkApple(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.AccountApple) (*api.AccountApple, error)) error
@@ -690,11 +722,22 @@ type Leaderboard interface {
 	GetCreateTime() int64
 }
 
+type PresenceReason uint8
+
+const (
+	PresenceReasonUnknown PresenceReason = iota
+	PresenceReasonJoin
+	PresenceReasonUpdate
+	PresenceReasonLeave
+	PresenceReasonDisconnect
+)
+
 type PresenceMeta interface {
 	GetHidden() bool
 	GetPersistence() bool
 	GetUsername() string
 	GetStatus() string
+	GetReason() PresenceReason
 }
 
 type Presence interface {
@@ -767,6 +810,17 @@ type WalletUpdateResult struct {
 	Previous map[string]int64
 }
 
+type WalletNegativeError struct {
+	UserID  string
+	Path    string
+	Current int64
+	Amount  int64
+}
+
+func (e *WalletNegativeError) Error() string {
+	return fmt.Sprintf("wallet update rejected negative value at path '%v'", e.Path)
+}
+
 type WalletLedgerItem interface {
 	GetID() string
 	GetUserID() string
@@ -819,7 +873,7 @@ type NakamaModule interface {
 	AccountDeleteId(ctx context.Context, userID string, recorded bool) error
 	AccountExportId(ctx context.Context, userID string) (string, error)
 
-	UsersGetId(ctx context.Context, userIDs []string) ([]*api.User, error)
+	UsersGetId(ctx context.Context, userIDs []string, facebookIDs []string) ([]*api.User, error)
 	UsersGetUsername(ctx context.Context, usernames []string) ([]*api.User, error)
 	UsersBanId(ctx context.Context, userIDs []string) error
 	UsersUnbanId(ctx context.Context, userIDs []string) error
@@ -832,7 +886,7 @@ type NakamaModule interface {
 	LinkFacebookInstantGame(ctx context.Context, userID, signedPlayerInfo string) error
 	LinkGameCenter(ctx context.Context, userID, playerID, bundleID string, timestamp int64, salt, signature, publicKeyUrl string) error
 	LinkGoogle(ctx context.Context, userID, token string) error
-	LinkSteam(ctx context.Context, userID, token string) error
+	LinkSteam(ctx context.Context, userID, username, token string, importFriends bool) error
 
 	ReadFile(path string) (*os.File, error)
 
@@ -857,7 +911,8 @@ type NakamaModule interface {
 	StreamSend(mode uint8, subject, subcontext, label, data string, presences []Presence, reliable bool) error
 	StreamSendRaw(mode uint8, subject, subcontext, label string, msg *rtapi.Envelope, presences []Presence, reliable bool) error
 
-	SessionDisconnect(ctx context.Context, sessionID string) error
+	SessionDisconnect(ctx context.Context, sessionID string, reason ...PresenceReason) error
+	SessionLogout(userID, token, refreshToken string) error
 
 	MatchCreate(ctx context.Context, module string, params map[string]interface{}) (string, error)
 	MatchGet(ctx context.Context, id string) (*api.Match, error)
@@ -883,6 +938,12 @@ type NakamaModule interface {
 	LeaderboardRecordsList(ctx context.Context, id string, ownerIDs []string, limit int, cursor string, expiry int64) ([]*api.LeaderboardRecord, []*api.LeaderboardRecord, string, string, error)
 	LeaderboardRecordWrite(ctx context.Context, id, ownerID, username string, score, subscore int64, metadata map[string]interface{}) (*api.LeaderboardRecord, error)
 	LeaderboardRecordDelete(ctx context.Context, id, ownerID string) error
+
+	PurchaseValidateApple(ctx context.Context, userID, receipt string) (*api.ValidatePurchaseResponse, error)
+	PurchaseValidateGoogle(ctx context.Context, userID, receipt string) (*api.ValidatePurchaseResponse, error)
+	PurchaseValidateHuawei(ctx context.Context, userID, signature, inAppPurchaseData string) (*api.ValidatePurchaseResponse, error)
+	PurchasesList(ctx context.Context, userID string, limit int, cursor string) (*api.PurchaseList, error)
+	PurchaseGetByTransactionId(ctx context.Context, transactionID string) (string, *api.ValidatedPurchase, error)
 
 	TournamentCreate(ctx context.Context, id string, sortOrder, operator, resetSchedule string, metadata map[string]interface{}, title, description string, category, startTime, endTime, duration, maxSize, maxNumScore int, joinRequired bool) error
 	TournamentDelete(ctx context.Context, id string) error
@@ -911,3 +972,9 @@ type NakamaModule interface {
 
 	Event(ctx context.Context, evt *api.Event) error
 }
+
+
+// Custom Sentinel Error Values
+
+// ErrPurchaseReceiptAlreadySeen returned when a purchase contained in a receipt being validated has already been validated before.
+var ErrPurchaseReceiptAlreadySeen = errors.New("receipt purchase already seen before")
