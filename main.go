@@ -31,7 +31,6 @@ var (
 )
 
 const (
-	rpcIdRefresh   = "refreshes"
 	rpcIdRewards   = "rewards"
 	rpcIdFindMatch = "find_match"
 )
@@ -45,10 +44,6 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 	}
 	unmarshaler := &jsonpb.Unmarshaler{
 		AllowUnknownFields: false,
-	}
-
-	if err := initializer.RegisterRpc(rpcIdRefresh, rpcRefresh); err != nil {
-		return err
 	}
 
  	if err := initializer.RegisterRpc(rpcIdRewards, rpcRewards); err != nil {
