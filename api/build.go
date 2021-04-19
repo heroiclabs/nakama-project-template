@@ -14,4 +14,4 @@
 
 package api
 
-//go:generate protoc --proto_path=. --go_out=. --go_opt=paths=source_relative api.proto
+//go:generate protoc --proto_path=. --go_out=. --go_opt=paths=source_relative xoxoapi.proto
