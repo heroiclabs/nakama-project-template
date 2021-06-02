@@ -15,12 +15,11 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 	"math/rand"
 	"time"
 
@@ -60,8 +59,8 @@ type MatchLabel struct {
 }
 
 type MatchHandler struct {
-	marshaler   *jsonpb.Marshaler
-	unmarshaler *jsonpb.Unmarshaler
+	marshaler   *protojson.MarshalOptions
+	unmarshaler *protojson.UnmarshalOptions
 }
 
 type MatchState struct {
@@ -178,11 +177,11 @@ func (m *MatchHandler) MatchJoin(ctx context.Context, logger runtime.Logger, db 
 
 		// Send a message to the user that just joined, if one is needed based on the logic above.
 		if msg != nil {
-			var buf bytes.Buffer
-			if err := m.marshaler.Marshal(&buf, msg); err != nil {
+			buf, err := m.marshaler.Marshal(msg)
+			if err != nil {
 				logger.Error("error encoding message: %v", err)
 			} else {
-				dispatcher.BroadcastMessage(int64(opCode), buf.Bytes(), []runtime.Presence{presence}, nil, true)
+				_ = dispatcher.BroadcastMessage(int64(opCode), buf, []runtime.Presence{presence}, nil, true)
 			}
 		}
 	}
@@ -274,16 +273,16 @@ func (m *MatchHandler) MatchLoop(ctx context.Context, logger runtime.Logger, db 
 		s.nextGameRemainingTicks = 0
 
 		// Notify the players a new game has started.
-		var buf bytes.Buffer
-		if err := m.marshaler.Marshal(&buf, &api.Start{
+		buf, err := m.marshaler.Marshal(&api.Start{
 			Board:    s.board,
 			Marks:    s.marks,
 			Mark:     s.mark,
 			Deadline: t.Add(time.Duration(s.deadlineRemainingTicks/tickRate) * time.Second).Unix(),
-		}); err != nil {
+		})
+		if err != nil {
 			logger.Error("error encoding message: %v", err)
 		} else {
-			dispatcher.BroadcastMessage(int64(api.OpCode_OPCODE_START), buf.Bytes(), nil, nil, true)
+			_ = dispatcher.BroadcastMessage(int64(api.OpCode_OPCODE_START), buf, nil, nil, true)
 		}
 		return s
 	}
@@ -295,20 +294,20 @@ func (m *MatchHandler) MatchLoop(ctx context.Context, logger runtime.Logger, db 
 			mark := s.marks[message.GetUserId()]
 			if s.mark != mark {
 				// It is not this player's turn.
-				dispatcher.BroadcastMessage(int64(api.OpCode_OPCODE_REJECTED), nil, []runtime.Presence{message}, nil, true)
+				_ = dispatcher.BroadcastMessage(int64(api.OpCode_OPCODE_REJECTED), nil, []runtime.Presence{message}, nil, true)
 				continue
 			}
 
 			msg := &api.Move{}
-			err := m.unmarshaler.Unmarshal(bytes.NewReader(message.GetData()), msg)
+			err := m.unmarshaler.Unmarshal(message.GetData(), msg)
 			if err != nil {
 				// Client sent bad data.
-				dispatcher.BroadcastMessage(int64(api.OpCode_OPCODE_REJECTED), nil, []runtime.Presence{message}, nil, true)
+				_ = dispatcher.BroadcastMessage(int64(api.OpCode_OPCODE_REJECTED), nil, []runtime.Presence{message}, nil, true)
 				continue
 			}
 			if msg.Position < 0 || msg.Position > 8 || s.board[msg.Position] != api.Mark_MARK_UNSPECIFIED {
 				// Client sent a position outside the board, or one that has already been played.
-				dispatcher.BroadcastMessage(int64(api.OpCode_OPCODE_REJECTED), nil, []runtime.Presence{message}, nil, true)
+				_ = dispatcher.BroadcastMessage(int64(api.OpCode_OPCODE_REJECTED), nil, []runtime.Presence{message}, nil, true)
 				continue
 			}
 
@@ -372,15 +371,15 @@ func (m *MatchHandler) MatchLoop(ctx context.Context, logger runtime.Logger, db 
 				}
 			}
 
-			var buf bytes.Buffer
-			if err := m.marshaler.Marshal(&buf, outgoingMsg); err != nil {
+			buf, err := m.marshaler.Marshal(outgoingMsg)
+			if err != nil {
 				logger.Error("error encoding message: %v", err)
 			} else {
-				dispatcher.BroadcastMessage(int64(opCode), buf.Bytes(), nil, nil, true)
+				_ = dispatcher.BroadcastMessage(int64(opCode), buf, nil, nil, true)
 			}
 		default:
 			// No other opcodes are expected from the client, so automatically treat it as an error.
-			dispatcher.BroadcastMessage(int64(api.OpCode_OPCODE_REJECTED), nil, []runtime.Presence{message}, nil, true)
+			_ = dispatcher.BroadcastMessage(int64(api.OpCode_OPCODE_REJECTED), nil, []runtime.Presence{message}, nil, true)
 		}
 	}
 
@@ -399,15 +398,15 @@ func (m *MatchHandler) MatchLoop(ctx context.Context, logger runtime.Logger, db 
 			s.deadlineRemainingTicks = 0
 			s.nextGameRemainingTicks = delayBetweenGamesSec * tickRate
 
-			var buf bytes.Buffer
-			if err := m.marshaler.Marshal(&buf, &api.Done{
+			buf, err := m.marshaler.Marshal(&api.Done{
 				Board:         s.board,
 				Winner:        s.winner,
 				NextGameStart: t.Add(time.Duration(s.nextGameRemainingTicks/tickRate) * time.Second).Unix(),
-			}); err != nil {
+			})
+			if err != nil {
 				logger.Error("error encoding message: %v", err)
 			} else {
-				dispatcher.BroadcastMessage(int64(api.OpCode_OPCODE_DONE), buf.Bytes(), nil, nil, true)
+				_ = dispatcher.BroadcastMessage(int64(api.OpCode_OPCODE_DONE), buf, nil, nil, true)
 			}
 		}
 	}
