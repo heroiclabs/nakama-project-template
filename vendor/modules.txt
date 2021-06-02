@@ -1,15 +1,13 @@
-# github.com/golang/protobuf v1.5.2
-## explicit
-github.com/golang/protobuf/jsonpb
-github.com/golang/protobuf/proto
-# github.com/heroiclabs/nakama-common v1.13.1
+# github.com/heroiclabs/nakama-common v1.14.0
 ## explicit
 github.com/heroiclabs/nakama-common/api
 github.com/heroiclabs/nakama-common/rtapi
 github.com/heroiclabs/nakama-common/runtime
-# google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013
-## explicit
 # google.golang.org/protobuf v1.26.0
+## explicit
+google.golang.org/protobuf/cmd/protoc-gen-go
+google.golang.org/protobuf/cmd/protoc-gen-go/internal_gengo
+google.golang.org/protobuf/compiler/protogen
 google.golang.org/protobuf/encoding/protojson
 google.golang.org/protobuf/encoding/prototext
 google.golang.org/protobuf/encoding/protowire
@@ -41,3 +39,4 @@ google.golang.org/protobuf/runtime/protoimpl
 google.golang.org/protobuf/types/descriptorpb
 google.golang.org/protobuf/types/known/timestamppb
 google.golang.org/protobuf/types/known/wrapperspb
+google.golang.org/protobuf/types/pluginpb

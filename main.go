@@ -17,8 +17,8 @@ package main
 import (
 	"context"
 	"database/sql"
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/heroiclabs/nakama-common/runtime"
+	"google.golang.org/protobuf/encoding/protojson"
 	"time"
 )
 
@@ -39,11 +39,11 @@ const (
 func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, initializer runtime.Initializer) error {
 	initStart := time.Now()
 
-	marshaler := &jsonpb.Marshaler{
-		EnumsAsInts: true,
+	marshaler := &protojson.MarshalOptions{
+		UseEnumNumbers: true,
 	}
-	unmarshaler := &jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
+	unmarshaler := &protojson.UnmarshalOptions{
+		DiscardUnknown: false,
 	}
 
  	if err := initializer.RegisterRpc(rpcIdRewards, rpcRewards); err != nil {

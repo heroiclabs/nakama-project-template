@@ -15,17 +15,16 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
 	"github.com/heroiclabs/nakama-project-template/api"
+	"google.golang.org/protobuf/encoding/protojson"
 
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/heroiclabs/nakama-common/runtime"
 )
 
-func rpcFindMatch(marshaler *jsonpb.Marshaler, unmarshaler *jsonpb.Unmarshaler) func(context.Context, runtime.Logger, *sql.DB, runtime.NakamaModule, string) (string, error) {
+func rpcFindMatch(marshaler *protojson.MarshalOptions, unmarshaler *protojson.UnmarshalOptions) func(context.Context, runtime.Logger, *sql.DB, runtime.NakamaModule, string) (string, error) {
 	return func(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
 		_, ok := ctx.Value(runtime.RUNTIME_CTX_USER_ID).(string)
 		if !ok {
@@ -33,7 +32,7 @@ func rpcFindMatch(marshaler *jsonpb.Marshaler, unmarshaler *jsonpb.Unmarshaler) 
 		}
 
 		request := &api.RpcFindMatchRequest{}
-		if err := unmarshaler.Unmarshal(bytes.NewReader([]byte(payload)), request); err != nil {
+		if err := unmarshaler.Unmarshal([]byte(payload), request); err != nil {
 			return "", errUnmarshal
 		}
 
@@ -65,12 +64,12 @@ func rpcFindMatch(marshaler *jsonpb.Marshaler, unmarshaler *jsonpb.Unmarshaler) 
 			matchIDs = append(matchIDs, matchID)
 		}
 
-		response, err := marshaler.MarshalToString(&api.RpcFindMatchResponse{MatchIds: matchIDs})
+		response, err := marshaler.Marshal(&api.RpcFindMatchResponse{MatchIds: matchIDs})
 		if err != nil {
 			logger.Error("error marshaling response payload: %v", err.Error())
 			return "", errMarshal
 		}
 
-		return response, nil
+		return string(response), nil
 	}
 }
