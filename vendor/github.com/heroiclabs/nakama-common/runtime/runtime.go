@@ -88,7 +88,6 @@ package runtime
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -847,6 +846,14 @@ type StorageDelete struct {
 	Version    string
 }
 
+type ChannelType int
+
+const (
+	Room ChannelType = iota + 1
+	DirectMessage
+	Group
+)
+
 type NakamaModule interface {
 	AuthenticateApple(ctx context.Context, token, username string, create bool) (string, string, bool, error)
 	AuthenticateCustom(ctx context.Context, id, username string, create bool) (string, string, bool, error)
@@ -869,6 +876,7 @@ type NakamaModule interface {
 
 	UsersGetId(ctx context.Context, userIDs []string, facebookIDs []string) ([]*api.User, error)
 	UsersGetUsername(ctx context.Context, usernames []string) ([]*api.User, error)
+	UsersGetRandom(ctx context.Context, count int) ([]*api.User, error)
 	UsersBanId(ctx context.Context, userIDs []string) error
 	UsersUnbanId(ctx context.Context, userIDs []string) error
 
@@ -972,9 +980,8 @@ type NakamaModule interface {
 	MetricsCounterAdd(name string, tags map[string]string, delta int64)
 	MetricsGaugeSet(name string, tags map[string]string, value float64)
 	MetricsTimerRecord(name string, tags map[string]string, value time.Duration)
+
+	ChannelIdBuild(ctx context.Context, target string, chanType ChannelType) (string, error)
+	ChannelMessageSend(ctx context.Context, channelID string, content map[string]interface{}, senderId, senderUsername string, persist bool) (*rtapi.ChannelMessageAck, error)
+	ChannelMessageUpdate(ctx context.Context, channelID, messageID string, content map[string]interface{}, senderId, senderUsername string, persist bool) (*rtapi.ChannelMessageAck, error)
 }
-
-// Custom Sentinel Error Values
-
-// ErrPurchaseReceiptAlreadySeen returned when a purchase contained in a receipt being validated has already been validated before.
-var ErrPurchaseReceiptAlreadySeen = errors.New("receipt purchase already seen before")
