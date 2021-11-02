@@ -364,6 +364,10 @@ let matchTerminate: nkruntime.MatchTerminateFunction = function(ctx: nkruntime.C
     return { state };
 }
 
+let matchSignal: nkruntime.MatchSignalFunction = function(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, dispatcher: nkruntime.MatchDispatcher, tick: number, state: nkruntime.MatchState) {
+    return { state };
+}
+
 function calculateDeadlineTicks(l: MatchLabel): number {
     if (l.fast === 1) {
         return turnTimeFastSec * tickRate;

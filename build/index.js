@@ -24,6 +24,7 @@ function InitModule(ctx, logger, nk, initializer) {
         matchLeave: matchLeave,
         matchLoop: matchLoop,
         matchTerminate: matchTerminate,
+        matchSignal: matchSignal,
     });
     logger.info('JavaScript logic loaded.');
 }
@@ -336,7 +337,7 @@ var matchLoop = function (ctx, logger, nk, dispatcher, tick, state, messages) {
         var marks_1 = [Mark.X, Mark.O];
         Object.keys(s.presences).forEach(function (userId) {
             var _a;
-            s.marks[userId] = (_a = marks_1.shift()) !== null && _a !== void 0 ? _a : null;
+            s.marks[userId] = (_a = marks_1.shift(), (_a !== null && _a !== void 0 ? _a : null));
         });
         s.mark = Mark.X;
         s.winner = null;
@@ -359,7 +360,7 @@ var matchLoop = function (ctx, logger, nk, dispatcher, tick, state, messages) {
         switch (message.opCode) {
             case OpCode.MOVE:
                 logger.debug('Received move message from user: %v', s.marks);
-                var mark = (_a = s.marks[message.sender.userId]) !== null && _a !== void 0 ? _a : null;
+                var mark = (_a = s.marks[message.sender.userId], (_a !== null && _a !== void 0 ? _a : null));
                 if (mark === null || s.mark != mark) {
                     // It is not this player's turn.
                     dispatcher.broadcastMessage(OpCode.REJECTED, null, [message.sender]);
@@ -451,6 +452,9 @@ var matchLoop = function (ctx, logger, nk, dispatcher, tick, state, messages) {
     return { state: s };
 };
 var matchTerminate = function (ctx, logger, nk, dispatcher, tick, state, graceSeconds) {
+    return { state: state };
+};
+var matchSignal = function (ctx, logger, nk, dispatcher, tick, state) {
     return { state: state };
 };
 function calculateDeadlineTicks(l) {

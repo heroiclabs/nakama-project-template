@@ -27,6 +27,7 @@ function InitModule(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkrunt
         matchLeave,
         matchLoop,
         matchTerminate,
+        matchSignal,
     });
 
     logger.info('JavaScript logic loaded.');
