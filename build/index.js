@@ -368,7 +368,7 @@ var matchLoop = function (ctx, logger, nk, dispatcher, tick, state, messages) {
                 }
                 var msg = {};
                 try {
-                    msg = JSON.parse(message.data);
+                    msg = JSON.parse(nk.binaryToString(message.data));
                 }
                 catch (error) {
                     // Client sent bad data.
