@@ -272,7 +272,7 @@ let matchLoop: nkruntime.MatchLoopFunction = function(ctx: nkruntime.Context, lo
 
                 let msg = {} as MoveMessage;
                 try {
-                    msg = JSON.parse(message.data);
+                    msg = JSON.parse(nk.binaryToString(message.data));
                 } catch (error) {
                     // Client sent bad data.
                     dispatcher.broadcastMessage(OpCode.REJECTED, null, [message.sender]);
