@@ -208,99 +208,94 @@ var matchInit = function (ctx, logger, nk, params) {
     };
 };
 var matchJoinAttempt = function (ctx, logger, nk, dispatcher, tick, state, presence, metadata) {
-    var s = state;
     // Check if it's a user attempting to rejoin after a disconnect.
-    if (presence.userId in s.presences) {
-        if (s.presences[presence.userId] === undefined) {
+    if (presence.userId in state.presences) {
+        if (state.presences[presence.userId] === null) {
             // User rejoining after a disconnect.
-            s.joinsInProgress++;
+            state.joinsInProgress++;
             return {
-                state: s,
+                state: state,
                 accept: false,
             };
         }
         else {
             // User attempting to join from 2 different devices at the same time.
             return {
-                state: s,
+                state: state,
                 accept: false,
                 rejectMessage: 'already joined',
             };
         }
     }
     // Check if match is full.
-    if (Object.keys(s.presences).length + s.joinsInProgress >= 2) {
+    if (connectedPlayers(state) + state.joinsInProgress >= 2) {
         return {
-            state: s,
+            state: state,
             accept: false,
             rejectMessage: 'match full',
         };
     }
     // New player attempting to connect.
-    s.joinsInProgress++;
+    state.joinsInProgress++;
     return {
-        state: s,
+        state: state,
         accept: true,
     };
 };
 var matchJoin = function (ctx, logger, nk, dispatcher, tick, state, presences) {
-    var s = state;
     var t = msecToSec(Date.now());
     for (var _i = 0, presences_1 = presences; _i < presences_1.length; _i++) {
         var presence = presences_1[_i];
-        s.emptyTicks = 0;
-        s.presences[presence.userId] = presence;
-        s.joinsInProgress--;
+        state.emptyTicks = 0;
+        state.presences[presence.userId] = presence;
+        state.joinsInProgress--;
         // Check if we must send a message to this user to update them on the current game state.
-        if (s.playing) {
+        if (state.playing) {
             // There's a game still currently in progress, the player is re-joining after a disconnect. Give them a state update.
             var update = {
-                board: s.board,
-                mark: s.mark,
-                deadline: t + Math.floor(s.deadlineRemainingTicks / tickRate),
+                board: state.board,
+                mark: state.mark,
+                deadline: t + Math.floor(state.deadlineRemainingTicks / tickRate),
             };
             // Send a message to the user that just joined.
             dispatcher.broadcastMessage(OpCode.UPDATE, JSON.stringify(update));
         }
-        else if (s.board.length !== 0 && Object.keys(s.marks).length !== 0 && s.marks[presence.userId]) {
+        else if (state.board.length !== 0 && Object.keys(state.marks).length !== 0 && state.marks[presence.userId]) {
             logger.debug('player %s rejoined game', presence.userId);
             // There's no game in progress but we still have a completed game that the user was part of.
             // They likely disconnected before the game ended, and have since forfeited because they took too long to return.
             var done = {
-                board: s.board,
-                winner: s.winner,
-                winnerPositions: s.winnerPositions,
-                nextGameStart: t + Math.floor(s.nextGameRemainingTicks / tickRate)
+                board: state.board,
+                winner: state.winner,
+                winnerPositions: state.winnerPositions,
+                nextGameStart: t + Math.floor(state.nextGameRemainingTicks / tickRate)
             };
             // Send a message to the user that just joined.
             dispatcher.broadcastMessage(OpCode.DONE, JSON.stringify(done));
         }
     }
-    var label = s.label;
     // Check if match was open to new players, but should now be closed.
-    if (Object.keys(s.presences).length >= 2 && s.label.open != 0) {
-        s.label.open = 0;
-        var labelJSON = JSON.stringify(s.label);
+    if (Object.keys(state.presences).length >= 2 && state.label.open != 0) {
+        state.label.open = 0;
+        var labelJSON = JSON.stringify(state.label);
         dispatcher.matchLabelUpdate(labelJSON);
     }
-    return { state: s };
+    return { state: state };
 };
 var matchLeave = function (ctx, logger, nk, dispatcher, tick, state, presences) {
-    var s = state;
     for (var _i = 0, presences_2 = presences; _i < presences_2.length; _i++) {
         var presence = presences_2[_i];
         logger.info("Player: %s left match: %s.", presence.userId, ctx.matchId);
-        delete s.presences[presence.userId];
+        state.presences[presence.userId] = null;
     }
-    return { state: s };
+    return { state: state };
 };
 var matchLoop = function (ctx, logger, nk, dispatcher, tick, state, messages) {
     var _a;
-    var s = state;
     logger.debug('Running match loop. Tick: %d', tick);
-    if (Object.keys(s.presences).length + s.joinsInProgress === 0) {
-        s.emptyTicks++;
-        if (s.emptyTicks >= maxEmptySec * tickRate) {
+    if (connectedPlayers(state) + state.joinsInProgress === 0) {
+        state.emptyTicks++;
+        if (state.emptyTicks >= maxEmptySec * tickRate) {
             // Match has been empty for too long, close it.
             logger.info('closing idle match');
             return null;
@@ -308,60 +303,60 @@ var matchLoop = function (ctx, logger, nk, dispatcher, tick, state, messages) {
     }
     var t = msecToSec(Date.now());
     // If there's no game in progress check if we can (and should) start one!
-    if (!s.playing) {
+    if (!state.playing) {
         // Between games any disconnected users are purged, there's no in-progress game for them to return to anyway.
-        for (var userID in s.presences) {
-            if (s.presences[userID] === null) {
-                delete s.presences[userID];
+        for (var userID in state.presences) {
+            if (state.presences[userID] === null) {
+                delete state.presences[userID];
             }
         }
         // Check if we need to update the label so the match now advertises itself as open to join.
-        if (Object.keys(s.presences).length < 2 && s.label.open != 1) {
-            s.label.open = 1;
-            var labelJSON = JSON.stringify(s.label);
+        if (Object.keys(state.presences).length < 2 && state.label.open != 1) {
+            state.label.open = 1;
+            var labelJSON = JSON.stringify(state.label);
             dispatcher.matchLabelUpdate(labelJSON);
         }
         // Check if we have enough players to start a game.
-        if (Object.keys(s.presences).length < 2) {
-            return { state: s };
+        if (Object.keys(state.presences).length < 2) {
+            return { state: state };
         }
         // Check if enough time has passed since the last game.
-        if (s.nextGameRemainingTicks > 0) {
-            s.nextGameRemainingTicks--;
-            return { state: s };
+        if (state.nextGameRemainingTicks > 0) {
+            state.nextGameRemainingTicks--;
+            return { state: state };
         }
         // We can start a game! Set up the game state and assign the marks to each player.
-        s.playing = true;
-        s.board = new Array(9);
-        s.marks = {};
+        state.playing = true;
+        state.board = new Array(9);
+        state.marks = {};
         var marks_1 = [Mark.X, Mark.O];
-        Object.keys(s.presences).forEach(function (userId) {
+        Object.keys(state.presences).forEach(function (userId) {
             var _a;
-            s.marks[userId] = (_a = marks_1.shift()) !== null && _a !== void 0 ? _a : null;
+            state.marks[userId] = (_a = marks_1.shift(), (_a !== null && _a !== void 0 ? _a : null));
         });
-        s.mark = Mark.X;
-        s.winner = null;
-        s.winnerPositions = null;
-        s.deadlineRemainingTicks = calculateDeadlineTicks(s.label);
-        s.nextGameRemainingTicks = 0;
+        state.mark = Mark.X;
+        state.winner = null;
+        state.winnerPositions = null;
+        state.deadlineRemainingTicks = calculateDeadlineTicks(state.label);
+        state.nextGameRemainingTicks = 0;
         // Notify the players a new game has started.
         var msg = {
-            board: s.board,
-            marks: s.marks,
-            mark: s.mark,
-            deadline: t + Math.floor(s.deadlineRemainingTicks / tickRate),
+            board: state.board,
+            marks: state.marks,
+            mark: state.mark,
+            deadline: t + Math.floor(state.deadlineRemainingTicks / tickRate),
         };
         dispatcher.broadcastMessage(OpCode.START, JSON.stringify(msg));
-        return { state: s };
+        return { state: state };
     }
-    // There's a game in progress. Check for input, update match state, and send messages to clients.
+    // There's a game in progresstate. Check for input, update match state, and send messages to clientstate.
     for (var _i = 0, messages_1 = messages; _i < messages_1.length; _i++) {
         var message = messages_1[_i];
         switch (message.opCode) {
             case OpCode.MOVE:
-                logger.debug('Received move message from user: %v', s.marks);
-                var mark = (_a = s.marks[message.sender.userId]) !== null && _a !== void 0 ? _a : null;
-                if (mark === null || s.mark != mark) {
+                logger.debug('Received move message from user: %v', state.marks);
+                var mark = (_a = state.marks[message.sender.userId], (_a !== null && _a !== void 0 ? _a : null));
+                if (mark === null || state.mark != mark) {
                     // It is not this player's turn.
                     dispatcher.broadcastMessage(OpCode.REJECTED, null, [message.sender]);
                     continue;
@@ -376,50 +371,50 @@ var matchLoop = function (ctx, logger, nk, dispatcher, tick, state, messages) {
                     logger.debug('Bad data received: %v', error);
                     continue;
                 }
-                if (s.board[msg.position]) {
+                if (state.board[msg.position]) {
                     // Client sent a position outside the board, or one that has already been played.
                     dispatcher.broadcastMessage(OpCode.REJECTED, null, [message.sender]);
                     continue;
                 }
                 // Update the game state.
-                s.board[msg.position] = mark;
-                s.mark = mark === Mark.O ? Mark.X : Mark.O;
-                s.deadlineRemainingTicks = calculateDeadlineTicks(s.label);
+                state.board[msg.position] = mark;
+                state.mark = mark === Mark.O ? Mark.X : Mark.O;
+                state.deadlineRemainingTicks = calculateDeadlineTicks(state.label);
                 // Check if game is over through a winning move.
-                var _b = winCheck(s.board, mark), winner = _b[0], winningPos = _b[1];
+                var _b = winCheck(state.board, mark), winner = _b[0], winningPos = _b[1];
                 if (winner) {
-                    s.winner = mark;
-                    s.winnerPositions = winningPos;
-                    s.playing = false;
-                    s.deadlineRemainingTicks = 0;
-                    s.nextGameRemainingTicks = delaybetweenGamesSec * tickRate;
+                    state.winner = mark;
+                    state.winnerPositions = winningPos;
+                    state.playing = false;
+                    state.deadlineRemainingTicks = 0;
+                    state.nextGameRemainingTicks = delaybetweenGamesSec * tickRate;
                 }
                 // Check if game is over because no more moves are possible.
-                var tie = s.board.every(function (v) { return v !== null; });
+                var tie = state.board.every(function (v) { return v !== null; });
                 if (tie) {
                     // Update state to reflect the tie, and schedule the next game.
-                    s.playing = false;
-                    s.deadlineRemainingTicks = 0;
-                    s.nextGameRemainingTicks = delaybetweenGamesSec * tickRate;
+                    state.playing = false;
+                    state.deadlineRemainingTicks = 0;
+                    state.nextGameRemainingTicks = delaybetweenGamesSec * tickRate;
                 }
                 var opCode = void 0;
                 var outgoingMsg = void 0;
-                if (s.playing) {
+                if (state.playing) {
                     opCode = OpCode.UPDATE;
                     var msg_1 = {
-                        board: s.board,
-                        mark: s.mark,
-                        deadline: t + Math.floor(s.deadlineRemainingTicks / tickRate),
+                        board: state.board,
+                        mark: state.mark,
+                        deadline: t + Math.floor(state.deadlineRemainingTicks / tickRate),
                     };
                     outgoingMsg = msg_1;
                 }
                 else {
                     opCode = OpCode.DONE;
                     var msg_2 = {
-                        board: s.board,
-                        winner: s.winner,
-                        winnerPositions: s.winnerPositions,
-                        nextGameStart: t + Math.floor(s.nextGameRemainingTicks / tickRate),
+                        board: state.board,
+                        winner: state.winner,
+                        winnerPositions: state.winnerPositions,
+                        nextGameStart: t + Math.floor(state.nextGameRemainingTicks / tickRate),
                     };
                     outgoingMsg = msg_2;
                 }
@@ -432,24 +427,24 @@ var matchLoop = function (ctx, logger, nk, dispatcher, tick, state, messages) {
         }
     }
     // Keep track of the time remaining for the player to submit their move. Idle players forfeit.
-    if (s.playing) {
-        s.deadlineRemainingTicks--;
-        if (s.deadlineRemainingTicks <= 0) {
+    if (state.playing) {
+        state.deadlineRemainingTicks--;
+        if (state.deadlineRemainingTicks <= 0) {
             // The player has run out of time to submit their move.
-            s.playing = false;
-            s.winner = s.mark === Mark.O ? Mark.X : Mark.O;
-            s.deadlineRemainingTicks = 0;
-            s.nextGameRemainingTicks = delaybetweenGamesSec * tickRate;
+            state.playing = false;
+            state.winner = state.mark === Mark.O ? Mark.X : Mark.O;
+            state.deadlineRemainingTicks = 0;
+            state.nextGameRemainingTicks = delaybetweenGamesSec * tickRate;
             var msg = {
-                board: s.board,
-                winner: s.winner,
-                nextGameStart: t + Math.floor(s.nextGameRemainingTicks / tickRate),
+                board: state.board,
+                winner: state.winner,
+                nextGameStart: t + Math.floor(state.nextGameRemainingTicks / tickRate),
                 winnerPositions: null,
             };
             dispatcher.broadcastMessage(OpCode.DONE, JSON.stringify(msg));
         }
     }
-    return { state: s };
+    return { state: state };
 };
 var matchTerminate = function (ctx, logger, nk, dispatcher, tick, state, graceSeconds) {
     return { state: state };
@@ -475,6 +470,16 @@ function winCheck(board, mark) {
         }
     }
     return [false, null];
+}
+function connectedPlayers(s) {
+    var count = 0;
+    for (var _i = 0, _a = Object.keys(s.presences); _i < _a.length; _i++) {
+        var p = _a[_i];
+        if (p !== null) {
+            count++;
+        }
+    }
+    return count;
 }
 // Copyright 2020 The Nakama Authors
 //
@@ -506,7 +511,7 @@ var rpcFindMatch = function (ctx, logger, nk, payload) {
     }
     var matches;
     try {
-        var query = "+label.open:1 +label.fast:".concat(request.fast ? 1 : 0);
+        var query = "+label.open:1 +label.fast:" + (request.fast ? 1 : 0);
         matches = nk.matchList(10, true, null, null, 1, query);
     }
     catch (error) {
