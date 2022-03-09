@@ -18,10 +18,11 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
 	"math/rand"
 	"time"
+
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/heroiclabs/nakama-common/runtime"
 	"github.com/heroiclabs/nakama-project-template/api"
@@ -91,6 +92,16 @@ type MatchState struct {
 	nextGameRemainingTicks int64
 }
 
+func (ms *MatchState) ConnectedCount() int {
+	count := 0
+	for _, p := range ms.presences {
+		if p != nil {
+			count++
+		}
+	}
+	return count
+}
+
 func (m *MatchHandler) MatchInit(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, params map[string]interface{}) (interface{}, int, string) {
 	fast, ok := params["fast"].(bool)
 	if !ok {
@@ -134,7 +145,7 @@ func (m *MatchHandler) MatchJoinAttempt(ctx context.Context, logger runtime.Logg
 	}
 
 	// Check if match is full.
-	if len(s.presences) + s.joinsInProgress >= 2 {
+	if len(s.presences)+s.joinsInProgress >= 2 {
 		return s, false, "match full"
 	}
 
@@ -214,7 +225,7 @@ func (m *MatchHandler) MatchLeave(ctx context.Context, logger runtime.Logger, db
 func (m *MatchHandler) MatchLoop(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, messages []runtime.MatchData) interface{} {
 	s := state.(*MatchState)
 
-	if len(s.presences) + s.joinsInProgress == 0 {
+	if s.ConnectedCount()+s.joinsInProgress == 0 {
 		s.emptyTicks++
 		if s.emptyTicks >= maxEmptySec*tickRate {
 			// Match has been empty for too long, close it.
@@ -322,7 +333,7 @@ func (m *MatchHandler) MatchLoop(ctx context.Context, logger runtime.Logger, db 
 			s.deadlineRemainingTicks = calculateDeadlineTicks(s.label)
 
 			// Check if game is over through a winning move.
-			winCheck:
+		winCheck:
 			for _, winningPosition := range winningPositions {
 				for _, position := range winningPosition {
 					if s.board[position] != mark {
@@ -364,10 +375,10 @@ func (m *MatchHandler) MatchLoop(ctx context.Context, logger runtime.Logger, db 
 			} else {
 				opCode = api.OpCode_OPCODE_DONE
 				outgoingMsg = &api.Done{
-					Board:    s.board,
-					Winner:   s.winner,
+					Board:           s.board,
+					Winner:          s.winner,
 					WinnerPositions: s.winnerPositions,
-					NextGameStart: t.Add(time.Duration(s.nextGameRemainingTicks/tickRate) * time.Second).Unix(),
+					NextGameStart:   t.Add(time.Duration(s.nextGameRemainingTicks/tickRate) * time.Second).Unix(),
 				}
 			}
 
