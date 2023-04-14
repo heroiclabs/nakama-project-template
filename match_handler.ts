@@ -384,7 +384,7 @@ function winCheck(board: Board, mark: Mark): [boolean, Mark[] | null] {
 function connectedPlayers(s: State): number {
     let count = 0;
     for(const p of Object.keys(s.presences)) {
-        if (p !== null) {
+        if (s.presences[p] !== null) {
             count++;
         }
     }
