@@ -1,13 +1,10 @@
-# github.com/golang/protobuf v1.5.2
-## explicit
-github.com/golang/protobuf/proto
-# github.com/heroiclabs/nakama-common v1.20.0
-## explicit
+# github.com/heroiclabs/nakama-common v1.27.0
+## explicit; go 1.19
 github.com/heroiclabs/nakama-common/api
 github.com/heroiclabs/nakama-common/rtapi
 github.com/heroiclabs/nakama-common/runtime
-# google.golang.org/protobuf v1.27.1
-## explicit
+# google.golang.org/protobuf v1.28.1
+## explicit; go 1.11
 google.golang.org/protobuf/cmd/protoc-gen-go
 google.golang.org/protobuf/cmd/protoc-gen-go/internal_gengo
 google.golang.org/protobuf/compiler/protogen

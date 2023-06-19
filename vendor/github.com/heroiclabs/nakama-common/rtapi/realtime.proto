@@ -194,9 +194,9 @@ message ChannelMessageAck {
   google.protobuf.Int32Value code = 3;
   // Username of the message sender.
   string username = 4;
-  // The UNIX time when the message was created.
+  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the message was created.
   google.protobuf.Timestamp create_time = 5;
-  // The UNIX time when the message was last updated.
+  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the message was last updated.
   google.protobuf.Timestamp update_time = 6;
   // True if the message was persisted to the channel's history, false otherwise.
   google.protobuf.BoolValue persistent = 7;
@@ -374,6 +374,8 @@ message MatchmakerAdd {
   map<string, string> string_properties = 4;
   // Numeric properties.
   map<string, double> numeric_properties = 5;
+  // Optional multiple of the count that must be satisfied.
+  google.protobuf.Int32Value count_multiple = 6;
 }
 
 // A successful matchmaking result.
@@ -524,6 +526,8 @@ message PartyMatchmakerAdd {
   map<string, string> string_properties = 5;
   // Numeric properties.
   map<string, double> numeric_properties = 6;
+  // Optional multiple of the count that must be satisfied.
+  google.protobuf.Int32Value count_multiple = 7;
 }
 
 // Cancel a party matchmaking process using a ticket.
