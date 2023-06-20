@@ -2,7 +2,7 @@ version: '3'
 services:
   postgres:
     command: postgres -c shared_preload_libraries=pg_stat_statements -c pg_stat_statements.track=all
-    container_name: backend_postgres
+    container_name: template_nk_postgres
     environment:
       - POSTGRES_DB=nakama
       - POSTGRES_PASSWORD=localdb
@@ -13,12 +13,17 @@ services:
     ports:
       - "5432:5432"
       - "8080:8080"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "nakama"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
     volumes:
       - data:/var/lib/postgresql/data
 
   nakama:
     build: .
-    container_name: backend
+    container_name: template_nk_backend
     depends_on:
       - postgres
     entrypoint:

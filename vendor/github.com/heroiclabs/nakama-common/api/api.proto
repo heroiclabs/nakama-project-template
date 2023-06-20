@@ -42,9 +42,9 @@ message Account {
   repeated AccountDevice devices = 4;
   // The custom id in the user's account.
   string custom_id = 5;
-  // The UNIX time when the user's email was verified.
+  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the user's email was verified.
   google.protobuf.Timestamp verify_time = 6;
-  // The UNIX time when the user's account was disabled/banned.
+  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the user's account was disabled/banned.
   google.protobuf.Timestamp disable_time = 7;
 }
 
@@ -298,9 +298,9 @@ message ChannelMessage {
   string username = 5;
   // The content payload.
   string content = 6;
-  // The UNIX time when the message was created.
+  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the message was created.
   google.protobuf.Timestamp create_time = 7;
-  // The UNIX time when the message was last updated.
+  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the message was last updated.
   google.protobuf.Timestamp update_time = 8;
   // True if the message was persisted to the channel's history, false otherwise.
   google.protobuf.BoolValue persistent = 9;
@@ -366,6 +366,12 @@ message DeleteLeaderboardRecordRequest {
 message DeleteNotificationsRequest {
   // The id of notifications.
   repeated string ids = 1;
+}
+
+// Delete a leaderboard record.
+message DeleteTournamentRecordRequest {
+  // The tournament ID to delete from.
+  string tournament_id = 1;
 }
 
 // Storage objects to delete.
@@ -436,6 +442,12 @@ message GetUsersRequest {
   repeated string facebook_ids = 3;
 }
 
+// Fetch a subscription by product id.
+message GetSubscriptionRequest {
+  // Product id of the subscription
+  string product_id = 1;
+}
+
 // A group in the server.
 message Group {
   // The id of a group.
@@ -458,9 +470,9 @@ message Group {
   int32 edge_count = 9;
   // The maximum number of members allowed.
   int32 max_count = 10;
-  // The UNIX time when the group was created.
+  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the group was created.
   google.protobuf.Timestamp create_time = 11;
-  // The UNIX time when the group was last updated.
+  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the group was last updated.
   google.protobuf.Timestamp update_time = 12;
 }
 
@@ -550,9 +562,9 @@ message Leaderboard {
   uint32 next_reset = 5;
   // Additional information stored as a JSON object.
   string metadata = 6;
-  // The UNIX time when the leaderboard was created.
+  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the leaderboard was created.
   google.protobuf.Timestamp create_time = 7;
-  // Wether the leaderboard was created authoritatively or not.
+  // Whether the leaderboard was created authoritatively or not.
   bool authoritative = 8;
 }
 
@@ -580,11 +592,11 @@ message LeaderboardRecord {
   int32 num_score = 6;
   // Metadata.
   string metadata = 7;
-  // The UNIX time when the leaderboard record was created.
+  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the leaderboard record was created.
   google.protobuf.Timestamp create_time = 8;
-  // The UNIX time when the leaderboard record was updated.
+  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the leaderboard record was updated.
   google.protobuf.Timestamp update_time = 9;
-  // The UNIX time when the leaderboard record expires.
+  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the leaderboard record expires.
   google.protobuf.Timestamp expiry_time = 10;
   // The rank of this record.
   int64 rank = 11;
@@ -686,6 +698,8 @@ message ListLeaderboardRecordsAroundOwnerRequest {
   string owner_id = 3;
   // Expiry in seconds (since epoch) to begin fetching records from.
   google.protobuf.Int64Value expiry = 4;
+  // A next or previous page cursor.
+  string cursor = 5;
 }
 
 // List leaderboard records from a given leaderboard.
@@ -738,6 +752,14 @@ message ListStorageObjectsRequest {
   string cursor = 4; // value from StorageObjectList.cursor.
 }
 
+// List user subscriptions.
+message ListSubscriptionsRequest {
+  // Max number of results per page
+  google.protobuf.Int32Value limit = 1;
+  // Cursor to retrieve a page of records from
+  string cursor = 2;
+}
+
 // List tournament records from a given tournament around the owner.
 message ListTournamentRecordsAroundOwnerRequest {
   // The ID of the tournament to list for.
@@ -748,6 +770,8 @@ message ListTournamentRecordsAroundOwnerRequest {
   string owner_id = 3;
   // Expiry in seconds (since epoch) to begin fetching records from.
   google.protobuf.Int64Value expiry = 4;
+  // A next or previous page cursor.
+  string cursor = 5;
 }
 
 // List tournament records from a given tournament.
@@ -826,7 +850,7 @@ message Notification {
   int32 code = 4;
   // ID of the sender, if a user. Otherwise 'null'.
   string sender_id = 5;
-  // The UNIX time when the notification was created.
+  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the notification was created.
   google.protobuf.Timestamp create_time = 6;
   // True if this notification was persisted to the database.
   bool persistent = 7;
@@ -908,9 +932,9 @@ message StorageObject {
   int32 permission_read = 6;
   // The write access permissions for the object.
   int32 permission_write = 7;
-  // The UNIX time when the object was created.
+  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the object was created.
   google.protobuf.Timestamp create_time = 8;
-  // The UNIX time when the object was last updated.
+  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the object was last updated.
   google.protobuf.Timestamp update_time = 9;
 }
 
@@ -972,11 +996,11 @@ message Tournament {
   uint32 next_reset = 11;
   // Additional information stored as a JSON object.
   string metadata = 12;
-  // The UNIX time when the tournament was created.
+  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the tournament was created.
   google.protobuf.Timestamp create_time = 13;
-  // The UNIX time when the tournament will start.
+  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the tournament will start.
   google.protobuf.Timestamp start_time = 14;
-  // The UNIX time when the tournament will be stopped.
+  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the tournament will be stopped.
   google.protobuf.Timestamp end_time = 15;
   // Duration of the tournament in seconds.
   uint32 duration = 16;
@@ -986,6 +1010,8 @@ message Tournament {
   uint32 prev_reset = 18;
   // Operator.
   Operator operator = 19;
+  // Whether the leaderboard was created authoritatively or not.
+  bool authoritative = 20;
 }
 
 // A list of tournaments.
@@ -1070,9 +1096,9 @@ message User {
   bool online = 13;
   // Number of related edges to this user.
   int32 edge_count = 14;
-  // The UNIX time when the user was created.
+  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the user was created.
   google.protobuf.Timestamp create_time = 15;
-  // The UNIX time when the user was last updated.
+  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the user was last updated.
   google.protobuf.Timestamp update_time = 16;
   // The Facebook Instant Game ID in the user's account.
   string facebook_instant_game_id = 17;
@@ -1118,12 +1144,32 @@ message Users {
 message ValidatePurchaseAppleRequest {
   // Base64 encoded Apple receipt data payload.
   string receipt = 1;
+  // Persist the purchase
+  google.protobuf.BoolValue persist = 2;
+}
+
+// Apple Subscription validation request
+message ValidateSubscriptionAppleRequest {
+  // Base64 encoded Apple receipt data payload.
+  string receipt = 1;
+  // Persist the subscription.
+  google.protobuf.BoolValue persist = 2;
 }
 
 // Google IAP Purchase validation request
 message ValidatePurchaseGoogleRequest {
   // JSON encoded Google purchase payload.
   string purchase = 1;
+  // Persist the purchase
+  google.protobuf.BoolValue persist = 2;
+}
+
+// Google Subscription validation request
+message ValidateSubscriptionGoogleRequest {
+  // JSON encoded Google purchase payload.
+  string receipt = 1;
+  // Persist the subscription.
+  google.protobuf.BoolValue persist = 2;
 }
 
 // Huawei IAP Purchase validation request
@@ -1132,52 +1178,94 @@ message ValidatePurchaseHuaweiRequest {
   string purchase = 1;
   // InAppPurchaseData signature.
   string signature = 2;
+  // Persist the purchase
+  google.protobuf.BoolValue persist = 3;
 }
 
 // Validated Purchase stored by Nakama.
 message ValidatedPurchase {
-  // Validation Provider
-  enum Store {
-    // Apple App Store
-    APPLE_APP_STORE = 0;
-    // Google Play Store
-    GOOGLE_PLAY_STORE = 1;
-    // Huawei App Gallery
-    HUAWEI_APP_GALLERY = 2;
-  }
-  // Environment where the purchase took place
-  enum Environment {
-    // Unknown environment.
-    UNKNOWN = 0;
-    // Sandbox/test environment.
-    SANDBOX = 1;
-    // Production environment.
-    PRODUCTION = 2;
-  }
+  // Purchase User ID.
+  string user_id = 1;
   // Purchase Product ID.
-  string product_id = 1;
+  string product_id = 2;
   // Purchase Transaction ID.
-  string transaction_id = 2;
+  string transaction_id = 3;
   // Store identifier
-  Store store = 3;
-  // UNIX Timestamp when the purchase was done.
-  google.protobuf.Timestamp purchase_time = 4;
-  // UNIX Timestamp when the receipt validation was stored in DB.
-  google.protobuf.Timestamp create_time = 5;
-  // UNIX Timestamp when the receipt validation was updated in DB.
-  google.protobuf.Timestamp update_time = 6;
+  StoreProvider store = 4;
+  // Timestamp when the purchase was done.
+  google.protobuf.Timestamp purchase_time = 5;
+  // Timestamp when the receipt validation was stored in DB.
+  google.protobuf.Timestamp create_time = 6;
+  // Timestamp when the receipt validation was updated in DB.
+  google.protobuf.Timestamp update_time = 7;
+  // Timestamp when the purchase was refunded. Set to UNIX
+  google.protobuf.Timestamp refund_time = 8;
   // Raw provider validation response.
-  string provider_response = 7;
+  string provider_response = 9;
   // Whether the purchase was done in production or sandbox environment.
-  Environment environment = 8;
+  StoreEnvironment environment = 10;
   // Whether the purchase had already been validated by Nakama before.
-  bool seen_before = 9;
+  bool seen_before = 11;
 }
 
-// Validate IAP response
+// Validate IAP response.
 message ValidatePurchaseResponse {
   // Newly seen validated purchases.
   repeated ValidatedPurchase validated_purchases = 1;
+}
+
+// Validate Subscription response.
+message ValidateSubscriptionResponse {
+  ValidatedSubscription validated_subscription = 1;
+}
+
+// Validation Provider,
+enum StoreProvider {
+  // Apple App Store
+  APPLE_APP_STORE = 0;
+  // Google Play Store
+  GOOGLE_PLAY_STORE = 1;
+  // Huawei App Gallery
+  HUAWEI_APP_GALLERY = 2;
+}
+
+// Environment where a purchase/subscription took place,
+enum StoreEnvironment {
+  // Unknown environment.
+  UNKNOWN = 0;
+  // Sandbox/test environment.
+  SANDBOX = 1;
+  // Production environment.
+  PRODUCTION = 2;
+}
+
+message ValidatedSubscription {
+  // Subscription User ID.
+  string user_id = 1;
+  // Purchase Product ID.
+  string product_id = 2;
+  // Purchase Original transaction ID (we only keep track of the original subscription, not subsequent renewals).
+  string original_transaction_id = 3;
+  // Store identifier
+  StoreProvider store = 4;
+  // UNIX Timestamp when the purchase was done.
+  google.protobuf.Timestamp purchase_time = 5;
+  // UNIX Timestamp when the receipt validation was stored in DB.
+  google.protobuf.Timestamp create_time = 6;
+  // UNIX Timestamp when the receipt validation was updated in DB.
+  google.protobuf.Timestamp update_time = 7;
+  // Whether the purchase was done in production or sandbox environment.
+  StoreEnvironment environment = 8;
+  // Subscription expiration time. The subscription can still be auto-renewed to extend the expiration time further.
+  google.protobuf.Timestamp expiry_time = 9;
+  // Subscription refund time. If this time is set, the subscription was refunded.
+  google.protobuf.Timestamp refund_time = 10;
+  // Raw provider validation response body.
+  string provider_response = 11;
+  // Raw provider notification body.
+  string provider_notification = 12;
+  // Whether the subscription is currently active or not.
+  bool active = 13;
 }
 
 // A list of validated purchases stored by Nakama.
@@ -1186,7 +1274,17 @@ message PurchaseList {
   repeated ValidatedPurchase validated_purchases = 1;
   // The cursor to send when retrieving the next page, if any.
   string cursor = 2;
+  // The cursor to send when retrieving the previous page, if any.
+  string prev_cursor = 3;
+}
+
+// A list of validated subscriptions stored by Nakama.
+message SubscriptionList {
+  // Stored validated subscriptions.
+  repeated ValidatedSubscription validated_subscriptions = 1;
   // The cursor to send when retrieving the next page, if any.
+  string cursor = 2;
+  // The cursor to send when retrieving the previous page, if any.
   string prev_cursor = 3;
 }
 
