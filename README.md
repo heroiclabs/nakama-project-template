@@ -121,7 +121,7 @@ This will return one or more match IDs:
 {"payload":"{\"match_ids\":[\"match ID 1\","match ID 2\",\"...\"]}"}
 ```
 
-To join one of these matches check the [our matchmaker documentation](https://heroiclabs.com/docs/nakama/concepts/multiplayer/matchmaker/#join-a-match).
+To join one of these matches check our [matchmaker documentation](https://heroiclabs.com/docs/nakama/concepts/multiplayer/matchmaker/#join-a-match).
 
 
 ### Contribute
