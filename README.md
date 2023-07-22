@@ -7,14 +7,13 @@ The codebase shows a few simple gameplay features written in all three of the ru
 
 For more documentation have a look at:
 
-* https://heroiclabs.com/docs/runtime-code-basics/
-* https://heroiclabs.com/docs/storage-collections/
-* https://heroiclabs.com/docs/user-accounts/#virtual-wallet
-* https://heroiclabs.com/docs/social-in-app-notifications/
-* https://heroiclabs.com/docs/gameplay-multiplayer-server-multiplayer/
-* https://heroiclabs.com/docs/runtime-code-function-reference/
+* https://heroiclabs.com/docs/nakama/server-framework/introduction/index.html
+* https://heroiclabs.com/docs/nakama/concepts/storage/
+* https://heroiclabs.com/docs/nakama/concepts/user-accounts/#virtual-wallet
+* https://heroiclabs.com/docs/nakama/concepts/notifications/
+* https://heroiclabs.com/docs/nakama/concepts/multiplayer/authoritative/
 
-For a detailed guide on setting up TypeScript check out the [Setup page](https://heroiclabs.com/docs/runtime-code-typescript-setup/#initialize-the-project).
+For a detailed guide on setting up TypeScript check out the [Setup page](https://heroiclabs.com/docs/nakama/server-framework/typescript-runtime/).
 
 __NOTE__ You can remove the Go, Lua or TypeScript code within this project to develop with just the single language you prefer.
 
@@ -122,7 +121,7 @@ This will return one or more match IDs:
 {"payload":"{\"match_ids\":[\"match ID 1\","match ID 2\",\"...\"]}"}
 ```
 
-To join one of these matches check the [documentation on individual client libraries here](https://heroiclabs.com/docs/gameplay-multiplayer-realtime/#join-a-match).
+To join one of these matches check our [matchmaker documentation](https://heroiclabs.com/docs/nakama/concepts/multiplayer/matchmaker/#join-a-match).
 
 
 ### Contribute
