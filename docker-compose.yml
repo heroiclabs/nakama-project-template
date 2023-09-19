@@ -21,11 +21,30 @@ services:
     volumes:
       - data:/var/lib/postgresql/data
 
+  tf:
+    image: tensorflow/serving
+    container_name: template_tf
+    environment:
+      - MODEL_NAME=ttt
+    expose:
+      - "8501"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./model:/models/ttt
+    restart: unless-stopped
+
   nakama:
     build: .
     container_name: template_nk_backend
     depends_on:
       - postgres
+      - tf
     entrypoint:
       - "/bin/sh"
       - "-ecx"

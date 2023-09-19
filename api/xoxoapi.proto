@@ -43,6 +43,10 @@ enum OpCode {
     OPCODE_MOVE = 4;
     // Move was rejected.
     OPCODE_REJECTED = 5;
+    // Opponent has left the game.
+    OPCODE_OPPONENT_LEFT = 6;
+    // Invite AI player to join instead of the opponent who left the game.
+    OPCODE_INVITE_AI = 7;
 }
 
 // Message data sent by server to clients representing a new game round starting.
@@ -90,6 +94,9 @@ message Move {
 message RpcFindMatchRequest {
     // User can choose a fast or normal speed match.
     bool fast = 1;
+
+    // User can choose whether to play with AI
+    bool ai = 2;
 }
 
 // Payload for an RPC response containing match IDs the user can join.

@@ -60,14 +60,17 @@ type MatchLabel struct {
 }
 
 type MatchHandler struct {
-	marshaler   *protojson.MarshalOptions
-	unmarshaler *protojson.UnmarshalOptions
+	marshaler        *protojson.MarshalOptions
+	unmarshaler      *protojson.UnmarshalOptions
+	tfServingAddress string
 }
 
 type MatchState struct {
 	random     *rand.Rand
 	label      *MatchLabel
 	emptyTicks int
+	ai         bool
+	messages   chan runtime.MatchData
 
 	// Currently connected users, or reserved spaces.
 	presences map[string]runtime.Presence
@@ -109,6 +112,8 @@ func (m *MatchHandler) MatchInit(ctx context.Context, logger runtime.Logger, db 
 		return nil, 0, ""
 	}
 
+	ai, _ := params["ai"].(bool)
+
 	label := &MatchLabel{
 		Open: 1,
 	}
@@ -121,12 +126,20 @@ func (m *MatchHandler) MatchInit(ctx context.Context, logger runtime.Logger, db 
 		labelJSON = []byte("{}")
 	}
 
-	return &MatchState{
-		random: rand.New(rand.NewSource(time.Now().UnixNano())),
-		label:  label,
-
+	state := &MatchState{
+		random:    rand.New(rand.NewSource(time.Now().UnixNano())),
+		label:     label,
+		ai:        ai,
 		presences: make(map[string]runtime.Presence, 2),
-	}, tickRate, string(labelJSON)
+		messages:  make(chan runtime.MatchData, 1),
+	}
+
+	// Automatically add AI player
+	if ai {
+		state.presences[aiUserId] = aiPresenceObj
+	}
+
+	return state, tickRate, string(labelJSON)
 }
 
 func (m *MatchHandler) MatchJoinAttempt(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, presence runtime.Presence, metadata map[string]string) (interface{}, bool, string) {
@@ -219,6 +232,20 @@ func (m *MatchHandler) MatchLeave(ctx context.Context, logger runtime.Logger, db
 		s.presences[presence.GetUserId()] = nil
 	}
 
+	var playersRemaining []runtime.Presence
+	for userId, presence := range s.presences {
+		if presence != nil && userId != aiUserId {
+			playersRemaining = append(playersRemaining, presence)
+		}
+	}
+
+	// Notify remaining player that the opponent has left the game
+	if len(playersRemaining) == 1 {
+		_ = dispatcher.BroadcastMessage(
+			int64(api.OpCode_OPCODE_OPPONENT_LEFT), nil,
+			playersRemaining, nil, true)
+	}
+
 	return s
 }
 
@@ -270,12 +297,21 @@ func (m *MatchHandler) MatchLoop(ctx context.Context, logger runtime.Logger, db 
 
 		// We can start a game! Set up the game state and assign the marks to each player.
 		s.playing = true
-		s.board = make([]api.Mark, 9, 9)
+		s.board = make([]api.Mark, 9)
 		s.marks = make(map[string]api.Mark, 2)
 		marks := []api.Mark{api.Mark_MARK_X, api.Mark_MARK_O}
+
 		for userID := range s.presences {
-			s.marks[userID] = marks[0]
-			marks = marks[1:]
+			if s.ai {
+				if userID == aiUserId {
+					s.marks[userID] = api.Mark_MARK_O
+				} else {
+					s.marks[userID] = api.Mark_MARK_X
+				}
+			} else {
+				s.marks[userID] = marks[0]
+				marks = marks[1:]
+			}
 		}
 		s.mark = api.Mark_MARK_X
 		s.winner = api.Mark_MARK_UNSPECIFIED
@@ -296,6 +332,13 @@ func (m *MatchHandler) MatchLoop(ctx context.Context, logger runtime.Logger, db 
 			_ = dispatcher.BroadcastMessage(int64(api.OpCode_OPCODE_START), buf, nil, nil, true)
 		}
 		return s
+	}
+
+	// Append AI moves, if any
+	select {
+	case msg := <-s.messages:
+		messages = append(messages, msg)
+	default:
 	}
 
 	// There's a game in progress. Check for input, update match state, and send messages to clients.
@@ -388,6 +431,38 @@ func (m *MatchHandler) MatchLoop(ctx context.Context, logger runtime.Logger, db 
 			} else {
 				_ = dispatcher.BroadcastMessage(int64(opCode), buf, nil, nil, true)
 			}
+		case api.OpCode_OPCODE_INVITE_AI:
+			if s.ai {
+				logger.Error("AI player is already playing")
+				continue
+			}
+
+			var activePlayers []runtime.Presence
+			for userId, presence := range s.presences {
+				if presence == nil {
+					delete(s.presences, userId)
+				} else if userId != aiUserId {
+					activePlayers = append(activePlayers, presence)
+				}
+			}
+			logger.Debug("active users: %d", len(activePlayers))
+
+			if len(activePlayers) != 1 {
+				logger.Error("one active player is required to enable AI mode")
+				continue
+			}
+
+			s.ai = true
+			s.presences[aiUserId] = aiPresenceObj
+
+			if s.marks[activePlayers[0].GetUserId()] == api.Mark_MARK_O {
+				s.marks[aiUserId] = api.Mark_MARK_X
+			} else {
+				s.marks[aiUserId] = api.Mark_MARK_O
+			}
+
+			logger.Info("AI player joined match")
+
 		default:
 			// No other opcodes are expected from the client, so automatically treat it as an error.
 			_ = dispatcher.BroadcastMessage(int64(api.OpCode_OPCODE_REJECTED), nil, []runtime.Presence{message}, nil, true)
@@ -419,6 +494,13 @@ func (m *MatchHandler) MatchLoop(ctx context.Context, logger runtime.Logger, db 
 			} else {
 				_ = dispatcher.BroadcastMessage(int64(api.OpCode_OPCODE_DONE), buf, nil, nil, true)
 			}
+		}
+	}
+
+	// The next turn is AI's
+	if s.ai && s.mark == s.marks[aiUserId] {
+		if err := m.aiTurn(s); err != nil {
+			logger.Error("error making AI turn: %v", err)
 		}
 	}
 

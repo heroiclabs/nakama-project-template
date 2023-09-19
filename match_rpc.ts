@@ -29,6 +29,14 @@ let rpcFindMatch: nkruntime.RpcFunction = function (ctx: nkruntime.Context, logg
         throw error;
     }
 
+    if(request.ai) {
+        let matchId = nk.matchCreate(
+            moduleName, {fast: request.fast, ai: true});
+
+        let res: RpcFindMatchResponse = { matchIds: [matchId] };
+        return JSON.stringify(res);
+    }
+
     let matches: nkruntime.Match[];
     try {
         const query = `+label.open:1 +label.fast:${request.fast ? 1 : 0}`;
