@@ -232,19 +232,19 @@ func (m *MatchHandler) MatchLeave(ctx context.Context, logger runtime.Logger, db
 		s.presences[presence.GetUserId()] = nil
 	}
 
-	var playersRemaining []runtime.Presence
+	var humanPlayersRemaining []runtime.Presence
 	for userId, presence := range s.presences {
 		if presence != nil && userId != aiUserId {
-			playersRemaining = append(playersRemaining, presence)
+			humanPlayersRemaining = append(humanPlayersRemaining, presence)
 		}
 	}
 
 	// Notify remaining player that the opponent has left the game
-	if len(playersRemaining) == 1 {
+	if len(humanPlayersRemaining) == 1 {
 		_ = dispatcher.BroadcastMessage(
 			int64(api.OpCode_OPCODE_OPPONENT_LEFT), nil,
-			playersRemaining, nil, true)
-	} else if s.ai && len(playersRemaining) == 0 {
+			humanPlayersRemaining, nil, true)
+	} else if s.ai && len(humanPlayersRemaining) == 0 {
 		delete(s.presences, aiUserId)
 		s.ai = false
 	}

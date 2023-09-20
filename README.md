@@ -52,7 +52,7 @@ The bundled JavaScript code output can be found in "build/index.js".
 
 ### Start
 
-The recommended workflow is to use Docker and the compose file to build and run the game server and database resources.
+The recommended workflow is to use Docker and the compose file to build and run the game server, database resources and tensorflow-serving (AI model server).
 
 ```shell
 docker-compose up --build nakama
@@ -123,6 +123,12 @@ This will return one or more match IDs:
 
 To join one of these matches check our [matchmaker documentation](https://heroiclabs.com/docs/nakama/concepts/multiplayer/matchmaker/#join-a-match).
 
+### AI/ML model
+
+In addition to starting Nakama and database, `docker-compose.yml` file
+also defines the `tf` container, an instance of [TFX](https://www.tensorflow.org/tfx) (formerly known as `Tensorflow Serving`), a service to serve
+pre-trained machine learning models.
+The model itself is located in the [./model](./model) directory.
 
 ### Contribute
 

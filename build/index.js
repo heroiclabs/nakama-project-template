@@ -377,16 +377,16 @@ var matchLeave = function (ctx, logger, nk, dispatcher, tick, state, presences) 
         logger.info("Player: %s left match: %s.", presence.userId, ctx.matchId);
         state.presences[presence.userId] = null;
     }
-    var playersRemaining = [];
+    var humanPlayersRemaining = [];
     Object.keys(state.presences).forEach(function (userId) {
         if (userId !== aiUserId && state.presences[userId] !== null)
-            playersRemaining.push(state.presences[userId]);
+            humanPlayersRemaining.push(state.presences[userId]);
     });
     // Notify remaining player that the opponent has left the game
-    if (playersRemaining.length === 1) {
-        dispatcher.broadcastMessage(OpCode.OPPONENT_LEFT, null, playersRemaining, null, true);
+    if (humanPlayersRemaining.length === 1) {
+        dispatcher.broadcastMessage(OpCode.OPPONENT_LEFT, null, humanPlayersRemaining, null, true);
     }
-    else if (state.ai && playersRemaining.length === 0) {
+    else if (state.ai && humanPlayersRemaining.length === 0) {
         delete (state.presences[aiUserId]);
         state.ai = false;
     }
