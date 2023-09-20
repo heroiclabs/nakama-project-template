@@ -386,6 +386,10 @@ var matchLeave = function (ctx, logger, nk, dispatcher, tick, state, presences) 
     if (playersRemaining.length === 1) {
         dispatcher.broadcastMessage(OpCode.OPPONENT_LEFT, null, playersRemaining, null, true);
     }
+    else if (state.ai && playersRemaining.length === 0) {
+        delete (state.presences[aiUserId]);
+        state.ai = false;
+    }
     return { state: state };
 };
 var matchLoop = function (ctx, logger, nk, dispatcher, tick, state, messages) {

@@ -244,6 +244,9 @@ func (m *MatchHandler) MatchLeave(ctx context.Context, logger runtime.Logger, db
 		_ = dispatcher.BroadcastMessage(
 			int64(api.OpCode_OPCODE_OPPONENT_LEFT), nil,
 			playersRemaining, nil, true)
+	} else if s.ai && len(playersRemaining) == 0 {
+		delete(s.presences, aiUserId)
+		s.ai = false
 	}
 
 	return s

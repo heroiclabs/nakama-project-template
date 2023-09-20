@@ -16,7 +16,7 @@ enum OpCode {
 	MOVE = 4,
 	// Move was rejected.
 	REJECTED = 5,
-    // Opponent has left the game.
+ 	// Opponent has left the game.
     OPPONENT_LEFT = 6,
     // Invite AI player to join instead of the opponent who left the game.
     INVITE_AI = 7,

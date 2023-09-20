@@ -202,6 +202,9 @@ let matchLeave: nkruntime.MatchLeaveFunction<State> = function(ctx: nkruntime.Co
     if (playersRemaining.length === 1) {
         dispatcher.broadcastMessage(
             OpCode.OPPONENT_LEFT, null, playersRemaining, null, true)
+    } else if(state.ai && playersRemaining.length === 0) {
+        delete(state.presences[aiUserId]);
+        state.ai = false;
     }
 
     return {state};
