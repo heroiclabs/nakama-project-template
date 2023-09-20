@@ -60,12 +60,17 @@ interface State {
     winnerPositions: BoardPosition[] | null
     // Ticks until the next game starts, if applicable.
     nextGameRemainingTicks: number
+    // AI playing mode
+    ai: boolean
+    // A move message from AI player
+    aiMessage: nkruntime.MatchMessage | null
 }
 
 let matchInit: nkruntime.MatchInitFunction<State> = function (ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, params: {[key: string]: string}) {
     const fast = !!params['fast'];
+    const ai = !!params['ai'];
 
-    var label: MatchLabel = {
+    let label: MatchLabel = {
         open: 1,
         fast: 0,
     }
@@ -73,7 +78,7 @@ let matchInit: nkruntime.MatchInitFunction<State> = function (ctx: nkruntime.Con
         label.fast = 1;
     }
 
-    var state: State = {
+    let state: State = {
         label: label,
         emptyTicks: 0,
         presences: {},
@@ -86,6 +91,12 @@ let matchInit: nkruntime.MatchInitFunction<State> = function (ctx: nkruntime.Con
         winner: null,
         winnerPositions: null,
         nextGameRemainingTicks: 0,
+        ai: ai,
+        aiMessage: null,
+    }
+
+    if(ai) {
+        state.presences[aiUserId] = aiPresence;
     }
 
     return {
@@ -181,6 +192,21 @@ let matchLeave: nkruntime.MatchLeaveFunction<State> = function(ctx: nkruntime.Co
         state.presences[presence.userId] = null;
     }
 
+    let humanPlayersRemaining: nkruntime.Presence[] = [];
+    Object.keys(state.presences).forEach((userId) => {
+        if(userId !== aiUserId && state.presences[userId] !== null)
+            humanPlayersRemaining.push(state.presences[userId]!);
+    });
+
+    // Notify remaining player that the opponent has left the game
+    if (humanPlayersRemaining.length === 1) {
+        dispatcher.broadcastMessage(
+            OpCode.OPPONENT_LEFT, null, humanPlayersRemaining, null, true)
+    } else if(state.ai && humanPlayersRemaining.length === 0) {
+        delete(state.presences[aiUserId]);
+        state.ai = false;
+    }
+
     return {state};
 }
 
@@ -231,10 +257,18 @@ let matchLoop: nkruntime.MatchLoopFunction<State> = function(ctx: nkruntime.Cont
         state.marks = {};
         let marks = [Mark.X, Mark.O];
         Object.keys(state.presences).forEach(userId => {
-            state.marks[userId] = marks.shift() ?? null;
+            if(state.ai) {
+                if(userId === aiUserId) {
+                    state.marks[userId] = Mark.O;
+                } else {
+                    state.marks[userId] = Mark.X;
+                }
+            } else {
+                state.marks[userId] = marks.shift() ?? null;
+            }
         });
         state.mark = Mark.X;
-        state.winner = null;
+        state.winner = Mark.UNDEFINED;
         state.winnerPositions = null;
         state.deadlineRemainingTicks = calculateDeadlineTicks(state.label);
         state.nextGameRemainingTicks = 0;
@@ -251,15 +285,21 @@ let matchLoop: nkruntime.MatchLoopFunction<State> = function(ctx: nkruntime.Cont
         return { state };
     }
 
+    if(state.aiMessage !== null) {
+        messages.push(state.aiMessage);
+        state.aiMessage = null;
+    }
+
     // There's a game in progresstate. Check for input, update match state, and send messages to clientstate.
     for (const message of messages) {
         switch (message.opCode) {
             case OpCode.MOVE:
                 logger.debug('Received move message from user: %v', state.marks);
                 let mark = state.marks[message.sender.userId] ?? null;
+                let sender = message.sender.userId == aiUserId ? null : [message.sender];
                 if (mark === null || state.mark != mark) {
                     // It is not this player's turn.
-                    dispatcher.broadcastMessage(OpCode.REJECTED, null, [message.sender]);
+                    dispatcher.broadcastMessage(OpCode.REJECTED, null, sender);
                     continue;
                 }
 
@@ -268,13 +308,13 @@ let matchLoop: nkruntime.MatchLoopFunction<State> = function(ctx: nkruntime.Cont
                     msg = JSON.parse(nk.binaryToString(message.data));
                 } catch (error) {
                     // Client sent bad data.
-                    dispatcher.broadcastMessage(OpCode.REJECTED, null, [message.sender]);
+                    dispatcher.broadcastMessage(OpCode.REJECTED, null, sender);
                     logger.debug('Bad data received: %v', error);
                     continue;
                 }
                 if (state.board[msg.position]) {
                     // Client sent a position outside the board, or one that has already been played.
-                    dispatcher.broadcastMessage(OpCode.REJECTED, null, [message.sender]);
+                    dispatcher.broadcastMessage(OpCode.REJECTED, null, sender);
                     continue;
                 }
 
@@ -323,6 +363,42 @@ let matchLoop: nkruntime.MatchLoopFunction<State> = function(ctx: nkruntime.Cont
                 }
                 dispatcher.broadcastMessage(opCode, JSON.stringify(outgoingMsg));
                 break;
+            case OpCode.INVITE_AI:
+                if(state.ai) {
+                    logger.error('AI player is already playing');
+                    continue
+                }
+
+                let activePlayers: nkruntime.Presence[] = [];
+
+                Object.keys(state.presences).forEach((userId) => {
+                    let p = state.presences[userId];
+                    if(p === null) {
+                        delete state.presences[userId];
+                    } else {
+                        activePlayers.push(p);
+                    }
+                });
+
+                logger.debug('active users: %d', activePlayers.length);
+
+                if(activePlayers.length != 1) {
+                    logger.error('one active player is required to enable AI mode')
+                    continue
+                }
+
+                state.ai = true;
+                state.presences[aiUserId] = aiPresence;
+
+                if(state.marks[activePlayers[0].userId] == Mark.O) {
+                    state.marks[aiUserId] = Mark.X
+                } else {
+                    state.marks[aiUserId] = Mark.O
+                }
+
+                logger.info('AI player joined match')
+                break;
+
             default:
                 // No other opcodes are expected from the client, so automatically treat it as an error.
                 dispatcher.broadcastMessage(OpCode.REJECTED, null, [message.sender]);
@@ -348,6 +424,11 @@ let matchLoop: nkruntime.MatchLoopFunction<State> = function(ctx: nkruntime.Cont
             }
             dispatcher.broadcastMessage(OpCode.DONE, JSON.stringify(msg));
         }
+    }
+
+    // The next turn is AI's
+    if(state.ai && state.mark === state.marks[aiUserId]) {
+        aiTurn(state, logger, nk);
     }
 
     return { state };

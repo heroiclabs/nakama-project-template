@@ -1,5 +1,6 @@
 {
   "files": [
+    "./ai.ts",
     "./main.ts",
     "./daily_rewards.ts",
     "./messages.ts",

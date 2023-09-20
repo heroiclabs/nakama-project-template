@@ -1,4 +1,83 @@
 "use strict";
+// Copyright 2023 The Nakama Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+var aiUserId = "ai-user-id";
+var tfServingAddress = "http://tf:8501/v1/models/ttt:predict";
+var aiPresence = {
+    userId: aiUserId,
+    sessionId: "",
+    username: aiUserId,
+    node: "",
+};
+function aiMessage(code, data) {
+    return {
+        sender: aiPresence,
+        persistence: true,
+        status: "",
+        opCode: code,
+        data: data,
+        reliable: true,
+        receiveTimeMs: Date.now(),
+    };
+}
+function aiTurn(state, logger, nk) {
+    var aiCell = [1, 0];
+    var playerCell = [0, 1];
+    var undefCell = [0, 0];
+    // Convert board state into expected model format
+    var b = [
+        [undefCell, undefCell, undefCell],
+        [undefCell, undefCell, undefCell],
+        [undefCell, undefCell, undefCell],
+    ];
+    state.board.forEach(function (mark, idx) {
+        var rowIdx = Math.floor(idx / 3);
+        var cellIdx = idx % 3;
+        if (mark === state.marks[aiUserId])
+            b[rowIdx][cellIdx] = aiCell;
+        else if (mark === null || mark === Mark.UNDEFINED)
+            b[rowIdx][cellIdx] = undefCell;
+        else
+            b[rowIdx][cellIdx] = playerCell;
+    });
+    // Send the vectors to TF
+    var headers = { 'Accept': 'application/json' };
+    var resp = nk.httpRequest(tfServingAddress, 'post', headers, JSON.stringify({ instances: [b] }));
+    var body = JSON.parse(resp.body);
+    var predictions = [];
+    try {
+        predictions = body.predictions[0];
+    }
+    catch (error) {
+        logger.error("received unexpected TF response: %v: %v", error, body);
+        return;
+    }
+    // Find the index with the highest predicted value
+    var maxVal = -Infinity;
+    var aiMovePos = -1;
+    predictions.forEach(function (val, idx) {
+        if (val > maxVal) {
+            maxVal = val;
+            aiMovePos = idx;
+        }
+    });
+    // Append message to m.messages to be consumed by the next loop run
+    if (aiMovePos > -1) {
+        var move = nk.stringToBinary(JSON.stringify({ position: aiMovePos }));
+        state.aiMessage = aiMessage(OpCode.MOVE, move);
+    }
+}
 // Copyright 2020 The Nakama Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -131,9 +210,9 @@ function msecToSec(n) {
 }
 var Mark;
 (function (Mark) {
-    Mark[Mark["X"] = 0] = "X";
-    Mark[Mark["O"] = 1] = "O";
-    Mark[Mark["UNDEFINED"] = 2] = "UNDEFINED";
+    Mark[Mark["UNDEFINED"] = 0] = "UNDEFINED";
+    Mark[Mark["X"] = 1] = "X";
+    Mark[Mark["O"] = 2] = "O";
 })(Mark || (Mark = {}));
 // The complete set of opcodes used for communication between clients and server.
 var OpCode;
@@ -148,6 +227,10 @@ var OpCode;
     OpCode[OpCode["MOVE"] = 4] = "MOVE";
     // Move was rejected.
     OpCode[OpCode["REJECTED"] = 5] = "REJECTED";
+    // Opponent has left the game.
+    OpCode[OpCode["OPPONENT_LEFT"] = 6] = "OPPONENT_LEFT";
+    // Invite AI player to join instead of the opponent who left the game.
+    OpCode[OpCode["INVITE_AI"] = 7] = "INVITE_AI";
 })(OpCode || (OpCode = {}));
 // Copyright 2020 The Nakama Authors
 //
@@ -180,6 +263,7 @@ var winningPositions = [
 ];
 var matchInit = function (ctx, logger, nk, params) {
     var fast = !!params['fast'];
+    var ai = !!params['ai'];
     var label = {
         open: 1,
         fast: 0,
@@ -200,7 +284,12 @@ var matchInit = function (ctx, logger, nk, params) {
         winner: null,
         winnerPositions: null,
         nextGameRemainingTicks: 0,
+        ai: ai,
+        aiMessage: null,
     };
+    if (ai) {
+        state.presences[aiUserId] = aiPresence;
+    }
     return {
         state: state,
         tickRate: tickRate,
@@ -288,6 +377,19 @@ var matchLeave = function (ctx, logger, nk, dispatcher, tick, state, presences) 
         logger.info("Player: %s left match: %s.", presence.userId, ctx.matchId);
         state.presences[presence.userId] = null;
     }
+    var humanPlayersRemaining = [];
+    Object.keys(state.presences).forEach(function (userId) {
+        if (userId !== aiUserId && state.presences[userId] !== null)
+            humanPlayersRemaining.push(state.presences[userId]);
+    });
+    // Notify remaining player that the opponent has left the game
+    if (humanPlayersRemaining.length === 1) {
+        dispatcher.broadcastMessage(OpCode.OPPONENT_LEFT, null, humanPlayersRemaining, null, true);
+    }
+    else if (state.ai && humanPlayersRemaining.length === 0) {
+        delete (state.presences[aiUserId]);
+        state.ai = false;
+    }
     return { state: state };
 };
 var matchLoop = function (ctx, logger, nk, dispatcher, tick, state, messages) {
@@ -332,10 +434,20 @@ var matchLoop = function (ctx, logger, nk, dispatcher, tick, state, messages) {
         var marks_1 = [Mark.X, Mark.O];
         Object.keys(state.presences).forEach(function (userId) {
             var _a;
-            state.marks[userId] = (_a = marks_1.shift(), (_a !== null && _a !== void 0 ? _a : null));
+            if (state.ai) {
+                if (userId === aiUserId) {
+                    state.marks[userId] = Mark.O;
+                }
+                else {
+                    state.marks[userId] = Mark.X;
+                }
+            }
+            else {
+                state.marks[userId] = (_a = marks_1.shift()) !== null && _a !== void 0 ? _a : null;
+            }
         });
         state.mark = Mark.X;
-        state.winner = null;
+        state.winner = Mark.UNDEFINED;
         state.winnerPositions = null;
         state.deadlineRemainingTicks = calculateDeadlineTicks(state.label);
         state.nextGameRemainingTicks = 0;
@@ -349,17 +461,20 @@ var matchLoop = function (ctx, logger, nk, dispatcher, tick, state, messages) {
         dispatcher.broadcastMessage(OpCode.START, JSON.stringify(msg));
         return { state: state };
     }
-    // There's a game in progresstate. Check for input, update match state, and send messages to clientstate.
-    for (var _i = 0, messages_1 = messages; _i < messages_1.length; _i++) {
-        var message = messages_1[_i];
+    if (state.aiMessage !== null) {
+        messages.push(state.aiMessage);
+        state.aiMessage = null;
+    }
+    var _loop_1 = function (message) {
         switch (message.opCode) {
             case OpCode.MOVE:
                 logger.debug('Received move message from user: %v', state.marks);
-                var mark = (_a = state.marks[message.sender.userId], (_a !== null && _a !== void 0 ? _a : null));
+                var mark = (_a = state.marks[message.sender.userId]) !== null && _a !== void 0 ? _a : null;
+                var sender = message.sender.userId == aiUserId ? null : [message.sender];
                 if (mark === null || state.mark != mark) {
                     // It is not this player's turn.
-                    dispatcher.broadcastMessage(OpCode.REJECTED, null, [message.sender]);
-                    continue;
+                    dispatcher.broadcastMessage(OpCode.REJECTED, null, sender);
+                    return "continue";
                 }
                 var msg = {};
                 try {
@@ -367,14 +482,14 @@ var matchLoop = function (ctx, logger, nk, dispatcher, tick, state, messages) {
                 }
                 catch (error) {
                     // Client sent bad data.
-                    dispatcher.broadcastMessage(OpCode.REJECTED, null, [message.sender]);
+                    dispatcher.broadcastMessage(OpCode.REJECTED, null, sender);
                     logger.debug('Bad data received: %v', error);
-                    continue;
+                    return "continue";
                 }
                 if (state.board[msg.position]) {
                     // Client sent a position outside the board, or one that has already been played.
-                    dispatcher.broadcastMessage(OpCode.REJECTED, null, [message.sender]);
-                    continue;
+                    dispatcher.broadcastMessage(OpCode.REJECTED, null, sender);
+                    return "continue";
                 }
                 // Update the game state.
                 state.board[msg.position] = mark;
@@ -420,11 +535,46 @@ var matchLoop = function (ctx, logger, nk, dispatcher, tick, state, messages) {
                 }
                 dispatcher.broadcastMessage(opCode, JSON.stringify(outgoingMsg));
                 break;
+            case OpCode.INVITE_AI:
+                if (state.ai) {
+                    logger.error('AI player is already playing');
+                    return "continue";
+                }
+                var activePlayers_1 = [];
+                Object.keys(state.presences).forEach(function (userId) {
+                    var p = state.presences[userId];
+                    if (p === null) {
+                        delete state.presences[userId];
+                    }
+                    else {
+                        activePlayers_1.push(p);
+                    }
+                });
+                logger.debug('active users: %d', activePlayers_1.length);
+                if (activePlayers_1.length != 1) {
+                    logger.error('one active player is required to enable AI mode');
+                    return "continue";
+                }
+                state.ai = true;
+                state.presences[aiUserId] = aiPresence;
+                if (state.marks[activePlayers_1[0].userId] == Mark.O) {
+                    state.marks[aiUserId] = Mark.X;
+                }
+                else {
+                    state.marks[aiUserId] = Mark.O;
+                }
+                logger.info('AI player joined match');
+                break;
             default:
                 // No other opcodes are expected from the client, so automatically treat it as an error.
                 dispatcher.broadcastMessage(OpCode.REJECTED, null, [message.sender]);
                 logger.error('Unexpected opcode received: %d', message.opCode);
         }
+    };
+    // There's a game in progresstate. Check for input, update match state, and send messages to clientstate.
+    for (var _i = 0, messages_1 = messages; _i < messages_1.length; _i++) {
+        var message = messages_1[_i];
+        _loop_1(message);
     }
     // Keep track of the time remaining for the player to submit their move. Idle players forfeit.
     if (state.playing) {
@@ -443,6 +593,10 @@ var matchLoop = function (ctx, logger, nk, dispatcher, tick, state, messages) {
             };
             dispatcher.broadcastMessage(OpCode.DONE, JSON.stringify(msg));
         }
+    }
+    // The next turn is AI's
+    if (state.ai && state.mark === state.marks[aiUserId]) {
+        aiTurn(state, logger, nk);
     }
     return { state: state };
 };
@@ -475,7 +629,7 @@ function connectedPlayers(s) {
     var count = 0;
     for (var _i = 0, _a = Object.keys(s.presences); _i < _a.length; _i++) {
         var p = _a[_i];
-        if (p !== null) {
+        if (s.presences[p] !== null) {
             count++;
         }
     }
@@ -509,9 +663,14 @@ var rpcFindMatch = function (ctx, logger, nk, payload) {
         logger.error('Error parsing json message: %q', error);
         throw error;
     }
+    if (request.ai) {
+        var matchId = nk.matchCreate(moduleName, { fast: request.fast, ai: true });
+        var res_1 = { matchIds: [matchId] };
+        return JSON.stringify(res_1);
+    }
     var matches;
     try {
-        var query = "+label.open:1 +label.fast:" + (request.fast ? 1 : 0);
+        var query = "+label.open:1 +label.fast:".concat(request.fast ? 1 : 0);
         matches = nk.matchList(10, true, null, null, 1, query);
     }
     catch (error) {

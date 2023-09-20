@@ -35,7 +35,7 @@ const (
 	rpcIdFindMatch = "find_match"
 )
 
-//noinspection GoUnusedExportedFunction
+// noinspection GoUnusedExportedFunction
 func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, initializer runtime.Initializer) error {
 	initStart := time.Now()
 
@@ -46,7 +46,7 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		DiscardUnknown: false,
 	}
 
- 	if err := initializer.RegisterRpc(rpcIdRewards, rpcRewards); err != nil {
+	if err := initializer.RegisterRpc(rpcIdRewards, rpcRewards); err != nil {
 		return err
 	}
 
@@ -56,8 +56,9 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 
 	if err := initializer.RegisterMatch(moduleName, func(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule) (runtime.Match, error) {
 		return &MatchHandler{
-			marshaler:   marshaler,
-			unmarshaler: unmarshaler,
+			marshaler:        marshaler,
+			unmarshaler:      unmarshaler,
+			tfServingAddress: "http://tf:8501/v1/models/ttt:predict",
 		}, nil
 	}); err != nil {
 		return err
