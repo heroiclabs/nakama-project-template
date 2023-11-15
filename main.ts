@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { moduleName, matchInit, matchJoinAttempt, matchJoin, matchLeave, matchLoop, matchTerminate, matchSignal } from './match_handler.ts';
+import { rpcFindMatch } from './match_rpc.ts';
+import { rpcReward } from './daily_rewards.ts';
+
 const rpcIdRewards = 'rewards_js';
 const rpcIdFindMatch = 'find_match_js';
 
@@ -32,3 +36,6 @@ function InitModule(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkrunt
 
     logger.info('JavaScript logic loaded.');
 }
+
+// Reference InitModule to avoid it getting removed on build
+!InitModule && InitModule.bind(null);

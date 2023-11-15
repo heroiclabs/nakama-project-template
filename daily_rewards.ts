@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-function rpcReward(context: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
+export function rpcReward(context: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
     if (!context.userId) {
         throw Error('No user ID in context');
     }
@@ -107,6 +107,6 @@ function rpcReward(context: nkruntime.Context, logger: nkruntime.Logger, nk: nkr
     return result;
 }
 
-function msecToSec(n: number): number {
+export function msecToSec(n: number): number {
     return Math.floor(n / 1000);
 }

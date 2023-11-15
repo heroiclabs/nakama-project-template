@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "description": "An example project on how to set up and write custom logic in TypeScript for Nakama server.",
   "main": "build/index.js",
+  "type": "module",
   "scripts": {
+    "build": "tsc --noEmit && rollup -c",
+    "type-check": "tsc --noEmit",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -20,9 +23,19 @@
   },
   "homepage": "https://github.com/heroiclabs/nakama-project-template#readme",
   "dependencies": {
-    "nakama-runtime": "github:heroiclabs/nakama-common#master"
+    "nakama-runtime": "github:heroiclabs/nakama-common#master",
+    "rollup": "^4.4.1"
   },
   "devDependencies": {
-    "typescript": "^4.5.4"
+    "@babel/core": "^7.23.3",
+    "@babel/preset-env": "^7.23.3",
+    "@babel/preset-typescript": "^7.23.3",
+    "@rollup/plugin-babel": "^6.0.4",
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-json": "^6.0.1",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-typescript": "^11.1.5",
+    "tslib": "^2.6.2",
+    "typescript": "^5.2.2"
   }
 }

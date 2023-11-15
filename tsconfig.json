@@ -1,21 +1,21 @@
 {
-  "files": [
-    "./ai.ts",
-    "./main.ts",
-    "./daily_rewards.ts",
-    "./messages.ts",
-    "./match_handler.ts",
-    "./match_rpc.ts"
-  ],
-  "compilerOptions": {
-    "target": "es5",
-    "typeRoots": [
-      "./node_modules"
+    "compilerOptions": {
+      "noImplicitReturns": true,
+      "noUnusedLocals": true,
+      "removeComments": true,
+      "allowImportingTsExtensions": true,
+      "noEmit": true,
+      "target": "es5",
+      "module": "ESNext",
+      "strict": true,
+      "rootDirs": ["./node_modules/"]
+    },
+    "files": [
+        "./main.ts",
+        "./node_modules/nakama-runtime/index.d.ts"
     ],
-    "outFile": "./build/index.js",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
-  }
+    "exclude": [
+        "node_modules",
+        "build"
+    ]
 }
