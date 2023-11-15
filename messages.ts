@@ -1,11 +1,11 @@
-enum Mark {
+export enum Mark {
     UNDEFINED = 0,
     X = 1,
     O = 2,
 }
 
 // The complete set of opcodes used for communication between clients and server.
-enum OpCode {
+export enum OpCode {
 	// New game round starting.
 	START = 1,
 	// Update to the state of an ongoing round.
@@ -22,12 +22,12 @@ enum OpCode {
     INVITE_AI = 7,
 }
 
-type BoardPosition = 0|1|2|3|4|5|6|7|8
-type Message = StartMessage|UpdateMessage|DoneMessage|MoveMessage|RpcFindMatchRequest|RpcFindMatchResponse
-type Board = (Mark|null)[]
+export type BoardPosition = 0|1|2|3|4|5|6|7|8
+export type Message = StartMessage|UpdateMessage|DoneMessage|MoveMessage|RpcFindMatchRequest|RpcFindMatchResponse
+export type Board = (Mark|null)[]
 
 // Message data sent by server to clients representing a new game round starting.
-interface StartMessage {
+export interface StartMessage {
     // The current state of the board.
     board: Board
     // The assignments of the marks to players for this round.
@@ -39,7 +39,7 @@ interface StartMessage {
 }
 
 // A game state update sent by the server to clients.
-interface UpdateMessage {
+export interface UpdateMessage {
     // The current state of the board.
     board: Board
     // Whose turn it is to play.
@@ -49,7 +49,7 @@ interface UpdateMessage {
 }
 
 // Complete game round with winner announcement.
-interface DoneMessage {
+export interface DoneMessage {
     // The final state of the board.
     board: Board
     // The winner of the game, if any. Unspecified if it's a draw.
@@ -62,13 +62,13 @@ interface DoneMessage {
 }
 
 // A player intends to make a move.
-interface MoveMessage {
+export interface MoveMessage {
     // The position the player wants to place their mark in.
     position: BoardPosition;
 }
 
 // Payload for an RPC request to find a match.
-interface RpcFindMatchRequest {
+export interface RpcFindMatchRequest {
     // User can choose a fast or normal speed match.
     fast: boolean
     // User can choose whether to play with AI
@@ -76,7 +76,7 @@ interface RpcFindMatchRequest {
 }
 
 // Payload for an RPC response containing match IDs the user can join.
-interface RpcFindMatchResponse {
+export interface RpcFindMatchResponse {
     // One or more matches that fit the user's request.
     matchIds: string[]
 }

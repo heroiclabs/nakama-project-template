@@ -12,7 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-const moduleName = "tic-tac-toe_js";
+import { Board, Mark, BoardPosition, Message, StartMessage, UpdateMessage, DoneMessage, MoveMessage, OpCode } from './messages.ts';
+import { msecToSec } from './daily_rewards.ts';
+import { aiUserId, aiPresence, aiTurn } from './ai.ts';
+
+export const moduleName = "tic-tac-toe_js";
+
 const tickRate = 5;
 const maxEmptySec = 30;
 const delaybetweenGamesSec = 5;
@@ -35,7 +40,7 @@ interface MatchLabel {
     fast: number
 }
 
-interface State {
+export interface State {
     // Match label
     label: MatchLabel
     // Ticks where no actions have occurred.
@@ -66,7 +71,7 @@ interface State {
     aiMessage: nkruntime.MatchMessage | null
 }
 
-let matchInit: nkruntime.MatchInitFunction<State> = function (ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, params: {[key: string]: string}) {
+export let matchInit: nkruntime.MatchInitFunction<State> = function (ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, params: {[key: string]: string}) {
     const fast = !!params['fast'];
     const ai = !!params['ai'];
 
@@ -106,7 +111,7 @@ let matchInit: nkruntime.MatchInitFunction<State> = function (ctx: nkruntime.Con
     }
 }
 
-let matchJoinAttempt: nkruntime.MatchJoinAttemptFunction<State> = function (ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, dispatcher: nkruntime.MatchDispatcher, tick: number, state: State, presence: nkruntime.Presence, metadata: {[key: string]: any}) {
+export let matchJoinAttempt: nkruntime.MatchJoinAttemptFunction<State> = function (ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, dispatcher: nkruntime.MatchDispatcher, tick: number, state: State, presence: nkruntime.Presence, metadata: {[key: string]: any}) {
     // Check if it's a user attempting to rejoin after a disconnect.
     if (presence.userId in state.presences) {
         if (state.presences[presence.userId] === null) {
@@ -143,7 +148,7 @@ let matchJoinAttempt: nkruntime.MatchJoinAttemptFunction<State> = function (ctx:
     }
 }
 
-let matchJoin: nkruntime.MatchJoinFunction<State> = function(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, dispatcher: nkruntime.MatchDispatcher, tick: number, state: State, presences: nkruntime.Presence[]) {
+export let matchJoin: nkruntime.MatchJoinFunction<State> = function(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, dispatcher: nkruntime.MatchDispatcher, tick: number, state: State, presences: nkruntime.Presence[]) {
     const t = msecToSec(Date.now());
 
     for (const presence of presences) {
@@ -186,7 +191,7 @@ let matchJoin: nkruntime.MatchJoinFunction<State> = function(ctx: nkruntime.Cont
     return {state};
 }
 
-let matchLeave: nkruntime.MatchLeaveFunction<State> = function(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, dispatcher: nkruntime.MatchDispatcher, tick: number, state: State, presences: nkruntime.Presence[]) {
+export let matchLeave: nkruntime.MatchLeaveFunction<State> = function(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, dispatcher: nkruntime.MatchDispatcher, tick: number, state: State, presences: nkruntime.Presence[]) {
     for (let presence of presences) {
         logger.info("Player: %s left match: %s.", presence.userId, ctx.matchId);
         state.presences[presence.userId] = null;
@@ -210,7 +215,7 @@ let matchLeave: nkruntime.MatchLeaveFunction<State> = function(ctx: nkruntime.Co
     return {state};
 }
 
-let matchLoop: nkruntime.MatchLoopFunction<State> = function(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, dispatcher: nkruntime.MatchDispatcher, tick: number, state: State, messages: nkruntime.MatchMessage[]) {
+export let matchLoop: nkruntime.MatchLoopFunction<State> = function(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, dispatcher: nkruntime.MatchDispatcher, tick: number, state: State, messages: nkruntime.MatchMessage[]) {
     logger.debug('Running match loop. Tick: %d', tick);
 
     if (connectedPlayers(state) + state.joinsInProgress === 0) {
@@ -290,14 +295,14 @@ let matchLoop: nkruntime.MatchLoopFunction<State> = function(ctx: nkruntime.Cont
         state.aiMessage = null;
     }
 
-    // There's a game in progresstate. Check for input, update match state, and send messages to clientstate.
+    // There's a game in progress. Check for input, update match state and send messages to clients.
     for (const message of messages) {
         switch (message.opCode) {
             case OpCode.MOVE:
                 logger.debug('Received move message from user: %v', state.marks);
                 let mark = state.marks[message.sender.userId] ?? null;
                 let sender = message.sender.userId == aiUserId ? null : [message.sender];
-                if (mark === null || state.mark != mark) {
+                if (mark === null || state.mark !== mark) {
                     // It is not this player's turn.
                     dispatcher.broadcastMessage(OpCode.REJECTED, null, sender);
                     continue;
@@ -434,11 +439,11 @@ let matchLoop: nkruntime.MatchLoopFunction<State> = function(ctx: nkruntime.Cont
     return { state };
 }
 
-let matchTerminate: nkruntime.MatchTerminateFunction<State> = function(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, dispatcher: nkruntime.MatchDispatcher, tick: number, state: State, graceSeconds: number) {
+export let matchTerminate: nkruntime.MatchTerminateFunction<State> = function(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, dispatcher: nkruntime.MatchDispatcher, tick: number, state: State, graceSeconds: number) {
     return { state };
 }
 
-let matchSignal: nkruntime.MatchSignalFunction<State> = function(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, dispatcher: nkruntime.MatchDispatcher, tick: number, state: State) {
+export let matchSignal: nkruntime.MatchSignalFunction<State> = function(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, dispatcher: nkruntime.MatchDispatcher, tick: number, state: State) {
     return { state };
 }
 
