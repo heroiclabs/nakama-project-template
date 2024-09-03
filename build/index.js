@@ -568,8 +568,13 @@ var rpcFindMatch = function rpcFindMatch(ctx, logger, nk, payload) {
   return JSON.stringify(res);
 };
 
+var contentful = require('contentful');
+var siwe = require('siwe');
 var rpcIdRewards = 'rewards_js';
 var rpcIdFindMatch = 'find_match_js';
+var scheme = "https";
+var domain = "localhost";
+var origin = "https://localhost/login";
 function InitModule(ctx, logger, nk, initializer) {
   initializer.registerRpc(rpcIdRewards, rpcReward);
   initializer.registerRpc(rpcIdFindMatch, rpcFindMatch);
@@ -582,6 +587,24 @@ function InitModule(ctx, logger, nk, initializer) {
     matchTerminate: matchTerminate,
     matchSignal: matchSignal
   });
+  var client = contentful.createClient({
+    space: 'developer_bookshelf',
+    accessToken: '0b7f6x59a0'
+  });
+  logger.debug('client: ' + JSON.stringify(client));
   logger.info('JavaScript logic loaded.');
+  console.log(createSiweMessage("0x6Ee9894c677EFa1c56392e5E7533DE76004C8D94", "This is a test statement."));
+}
+function createSiweMessage(address, statement) {
+  var siweMessage = new siwe.SiweMessage({
+    scheme: scheme,
+    domain: domain,
+    address: address,
+    statement: statement,
+    uri: origin,
+    version: '1',
+    chainId: '1'
+  });
+  return siweMessage.prepareMessage();
 }
 !InitModule && InitModule.bind(null);

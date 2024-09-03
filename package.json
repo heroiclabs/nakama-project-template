@@ -23,7 +23,9 @@
   },
   "homepage": "https://github.com/heroiclabs/nakama-project-template#readme",
   "dependencies": {
-    "nakama-runtime": "github:heroiclabs/nakama-common#master"
+    "contentful": "^10.15.0",
+    "nakama-runtime": "github:heroiclabs/nakama-common#master",
+    "siwe": "^2.3.2"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -34,8 +36,9 @@
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-typescript": "^11.1.6",
+    "@types/node": "^22.5.2",
+    "rollup": "^4.21.2",
     "tslib": "^2.6.2",
-    "typescript": "^5.3.3",
-    "rollup": "^4.21.2"
+    "typescript": "^5.3.3"
   }
 }
