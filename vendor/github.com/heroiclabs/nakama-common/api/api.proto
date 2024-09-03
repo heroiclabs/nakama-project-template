@@ -432,6 +432,21 @@ message FriendList {
   string cursor = 2;
 }
 
+// A List of friends of friends
+message FriendsOfFriendsList {
+  // A friend of a friend.
+  message FriendOfFriend {
+    // The user who referred its friend.
+    string referrer = 1;
+    // User.
+    User user = 2;
+  }
+  // User friends of friends.
+  repeated FriendOfFriend friends_of_friends = 1;
+  // Cursor for the next page of results, if any.
+  string cursor = 2;
+}
+
 // Fetch a batch of zero or more users from the server.
 message GetUsersRequest {
   // The account id of a user.
@@ -614,6 +629,8 @@ message LeaderboardRecordList {
   string next_cursor = 3;
   // The cursor to send when retrieving the previous page, if any.
   string prev_cursor = 4;
+  // The total number of ranks available.
+  int64 rank_count = 5;
 }
 
 // Leave a group.
@@ -658,6 +675,13 @@ message ListFriendsRequest {
   google.protobuf.Int32Value state = 2;
   // An optional next page cursor.
   string cursor = 3;
+}
+
+message ListFriendsOfFriendsRequest {
+  // Max number of records to return. Between 1 and 100.
+  google.protobuf.Int32Value limit = 1;
+  // An optional next page cursor.
+  string cursor = 2;
 }
 
 // List groups based on given filters.
@@ -838,6 +862,19 @@ message MatchList {
   repeated Match matches = 1;
 }
 
+// Matchmaker ticket completion stats
+message MatchmakerCompletionStats {
+  google.protobuf.Timestamp create_time = 1;
+  google.protobuf.Timestamp complete_time = 2;
+}
+
+// Matchmaker stats
+message MatchmakerStats {
+  int32 ticket_count = 1;
+  google.protobuf.Timestamp oldest_ticket_create_time = 2;
+  repeated MatchmakerCompletionStats completions = 3;
+}
+
 // A notification in the server.
 message Notification {
   // ID of the Notification.
@@ -948,6 +985,10 @@ message StorageObjectAck {
   string version = 3;
   // The owner of the object.
   string user_id = 4;
+  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the object was created.
+  google.protobuf.Timestamp create_time = 5;
+  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the object was last updated.
+  google.protobuf.Timestamp update_time = 6;
 }
 
 // Batch of acknowledgements for the storage object write.
@@ -1032,6 +1073,8 @@ message TournamentRecordList {
   string next_cursor = 3;
   // The cursor to send when retrieving the previous page (optional).
   string prev_cursor = 4;
+  // The total number of ranks available.
+  int64 rank_count = 5;
 }
 
 // Update a user's account details.
@@ -1182,6 +1225,14 @@ message ValidatePurchaseHuaweiRequest {
   google.protobuf.BoolValue persist = 3;
 }
 
+// Facebook Instant IAP Purchase validation request
+message ValidatePurchaseFacebookInstantRequest {
+  // Base64 encoded Facebook Instant signedRequest receipt data payload.
+  string signed_request = 1;
+  // Persist the purchase
+  google.protobuf.BoolValue persist = 2;
+}
+
 // Validated Purchase stored by Nakama.
 message ValidatedPurchase {
   // Purchase User ID.
@@ -1227,6 +1278,8 @@ enum StoreProvider {
   GOOGLE_PLAY_STORE = 1;
   // Huawei App Gallery
   HUAWEI_APP_GALLERY = 2;
+  // Facebook Instant Store
+  FACEBOOK_INSTANT_STORE = 3;
 }
 
 // Environment where a purchase/subscription took place,

@@ -90,6 +90,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"os"
 	"time"
 
@@ -170,6 +171,8 @@ var (
 
 	ErrFriendInvalidCursor = errors.New("friend cursor invalid")
 
+	ErrLeaderboardNotFound = errors.New("leaderboard not found")
+
 	ErrTournamentNotFound                = errors.New("tournament not found")
 	ErrTournamentAuthoritative           = errors.New("tournament only allows authoritative submissions")
 	ErrTournamentMaxSizeReached          = errors.New("tournament max size reached")
@@ -185,15 +188,19 @@ var (
 	ErrMatchmakerTooManyTickets   = errors.New("matchmaker too many tickets")
 	ErrMatchmakerTicketNotFound   = errors.New("matchmaker ticket not found")
 
-	ErrPartyClosed           = errors.New("party closed")
-	ErrPartyFull             = errors.New("party full")
-	ErrPartyJoinRequestsFull = errors.New("party join requests full")
-	ErrPartyNotLeader        = errors.New("party leader only")
-	ErrPartyNotMember        = errors.New("party member not found")
-	ErrPartyNotRequest       = errors.New("party join request not found")
-	ErrPartyAcceptRequest    = errors.New("party could not accept request")
-	ErrPartyRemove           = errors.New("party could not remove")
-	ErrPartyRemoveSelf       = errors.New("party cannot remove self")
+	ErrPartyClosed                   = errors.New("party closed")
+	ErrPartyFull                     = errors.New("party full")
+	ErrPartyJoinRequestDuplicate     = errors.New("party join request duplicate")
+	ErrPartyJoinRequestAlreadyMember = errors.New("party join request already member")
+	ErrPartyJoinRequestsFull         = errors.New("party join requests full")
+	ErrPartyNotLeader                = errors.New("party leader only")
+	ErrPartyNotMember                = errors.New("party member not found")
+	ErrPartyNotRequest               = errors.New("party join request not found")
+	ErrPartyAcceptRequest            = errors.New("party could not accept request")
+	ErrPartyRemove                   = errors.New("party could not remove")
+	ErrPartyRemoveSelf               = errors.New("party cannot remove self")
+
+	ErrGracePeriodExpired = errors.New("grace period expired")
 
 	ErrGroupNameInUse         = errors.New("group name in use")
 	ErrGroupPermissionDenied  = errors.New("group permission denied")
@@ -308,7 +315,6 @@ It is made available to the InitModule function as an input parameter when the f
 NOTE: You must not cache the reference to this and reuse it as a later point as this could have unintended side effects.
 */
 type Initializer interface {
-
 	/*
 		RegisterRpc registers a function with the given ID. This ID can be used within client code to send an RPC message to
 		execute the function and return the result. Results are always returned as a JSON string (or optionally empty string).
@@ -462,6 +468,12 @@ type Initializer interface {
 
 	// RegisterAfterListFriends can be used to perform additional logic after friends are listed.
 	RegisterAfterListFriends(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, out *api.FriendList) error) error
+
+	// RegisterBeforeListFriendsOfFriends can be used to perform additional logic before listing friends of friends.
+	RegisterBeforeListFriendsOfFriends(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.ListFriendsOfFriendsRequest) (*api.ListFriendsOfFriendsRequest, error)) error
+
+	// RegisterAfterListFriendsOfFriends can be used to perform additional logic after listing friends of friends.
+	RegisterAfterListFriendsOfFriends(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, out *api.FriendsOfFriendsList) error) error
 
 	// RegisterBeforeAddFriends can be used to perform additional logic before friends are added.
 	RegisterBeforeAddFriends(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.AddFriendsRequest) (*api.AddFriendsRequest, error)) error
@@ -661,6 +673,12 @@ type Initializer interface {
 	// RegisterAfterListMatches can be used to perform additional logic after listing matches.
 	RegisterAfterListMatches(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, out *api.MatchList, in *api.ListMatchesRequest) error) error
 
+	// RegisterBeforeMatchmakerStats is used to register a function invoked when the server receives the relevant request.
+	RegisterBeforeGetMatchmakerStats(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule) error) error
+
+	// RegisterAfterMarchmakerStats is used to register a function invoked after the server processes the relevant request.
+	RegisterAfterGetMatchmakerStats(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, out *api.MatchmakerStats) error) error
+
 	// RegisterBeforeListNotifications can be used to perform additional logic before listing notifications for a user.
 	RegisterBeforeListNotifications(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.ListNotificationsRequest) (*api.ListNotificationsRequest, error)) error
 
@@ -757,6 +775,12 @@ type Initializer interface {
 	// RegisterAfterValidatePurchaseHuawei can be used to perform additional logic after validating an Huawei App Gallery IAP receipt.
 	RegisterAfterValidatePurchaseHuawei(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, out *api.ValidatePurchaseResponse, in *api.ValidatePurchaseHuaweiRequest) error) error
 
+	// RegisterBeforeValidatePurchaseFacebookInstant can be used to perform additional logic before validating an Facebook Instant IAP receipt.
+	RegisterBeforeValidatePurchaseFacebookInstant(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.ValidatePurchaseFacebookInstantRequest) (*api.ValidatePurchaseFacebookInstantRequest, error)) error
+
+	// RegisterAfterValidatePurchaseFacebookInstant can be used to perform additional logic after validating an Facebook Instant IAP receipt.
+	RegisterAfterValidatePurchaseFacebookInstant(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, out *api.ValidatePurchaseResponse, in *api.ValidatePurchaseFacebookInstantRequest) error) error
+
 	// RegisterBeforeListSubscriptions can be used to perform additional logic before listing subscriptions.
 	RegisterBeforeListSubscriptions(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, in *api.ListSubscriptionsRequest) (*api.ListSubscriptionsRequest, error)) error
 
@@ -837,6 +861,19 @@ type Initializer interface {
 
 	// RegisterEventSessionStart can be used to define functions triggered when client sessions end.
 	RegisterEventSessionEnd(fn func(ctx context.Context, logger Logger, evt *api.Event)) error
+
+	// Register a new storage index.
+	RegisterStorageIndex(name, collection, key string, fields []string, sortableFields []string, maxEntries int, indexOnly bool) error
+
+	// RegisterStorageIndexFilter can be used to define a filtering function for a given storage index.
+	RegisterStorageIndexFilter(indexName string, fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule, write *StorageWrite) bool) error
+
+	// RegisterFleetManager can be used to register a FleetManager implementation that can be retrieved from the runtime using GetFleetManager().
+	RegisterFleetManager(fleetManagerInit FleetManagerInitializer) error
+
+	// RegisterShutdown can be used to register a function that is executed once the server receives a termination signal.
+	// This function only fires if shutdown_grace_sec > 0 and will be terminated early if its execution takes longer than the configured grace seconds.
+	RegisterShutdown(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule)) error
 }
 
 type PresenceReason uint8
@@ -919,6 +956,17 @@ type NotificationSend struct {
 type NotificationDelete struct {
 	UserID         string
 	NotificationID string
+}
+
+type Notification struct {
+	Id         string
+	UserID     string
+	Subject    string
+	Content    map[string]any
+	Code       int
+	Sender     string
+	CreateTime *timestamppb.Timestamp
+	Persistent bool
 }
 
 type WalletUpdate struct {
@@ -1020,6 +1068,8 @@ type NakamaModule interface {
 	LinkGoogle(ctx context.Context, userID, token string) error
 	LinkSteam(ctx context.Context, userID, username, token string, importFriends bool) error
 
+	CronPrev(expression string, timestamp int64) (int64, error)
+	CronNext(expression string, timestamp int64) (int64, error)
 	ReadFile(path string) (*os.File, error)
 
 	UnlinkApple(ctx context.Context, userID, token string) error
@@ -1055,23 +1105,28 @@ type NakamaModule interface {
 	NotificationsSend(ctx context.Context, notifications []*NotificationSend) error
 	NotificationSendAll(ctx context.Context, subject string, content map[string]interface{}, code int, persistent bool) error
 	NotificationsDelete(ctx context.Context, notifications []*NotificationDelete) error
+	NotificationsGetId(ctx context.Context, userID string, ids []string) ([]*Notification, error)
+	NotificationsDeleteId(ctx context.Context, userID string, ids []string) error
 
 	WalletUpdate(ctx context.Context, userID string, changeset map[string]int64, metadata map[string]interface{}, updateLedger bool) (updated map[string]int64, previous map[string]int64, err error)
 	WalletsUpdate(ctx context.Context, updates []*WalletUpdate, updateLedger bool) ([]*WalletUpdateResult, error)
 	WalletLedgerUpdate(ctx context.Context, itemID string, metadata map[string]interface{}) (WalletLedgerItem, error)
 	WalletLedgerList(ctx context.Context, userID string, limit int, cursor string) ([]WalletLedgerItem, string, error)
 
-	StorageList(ctx context.Context, userID, collection string, limit int, cursor string) ([]*api.StorageObject, string, error)
+	StorageList(ctx context.Context, callerID, userID, collection string, limit int, cursor string) ([]*api.StorageObject, string, error)
 	StorageRead(ctx context.Context, reads []*StorageRead) ([]*api.StorageObject, error)
 	StorageWrite(ctx context.Context, writes []*StorageWrite) ([]*api.StorageObjectAck, error)
 	StorageDelete(ctx context.Context, deletes []*StorageDelete) error
+	StorageIndexList(ctx context.Context, callerID, indexName, query string, limit int, order []string) (*api.StorageObjects, error)
 
-	MultiUpdate(ctx context.Context, accountUpdates []*AccountUpdate, storageWrites []*StorageWrite, walletUpdates []*WalletUpdate, updateLedger bool) ([]*api.StorageObjectAck, []*WalletUpdateResult, error)
+	MultiUpdate(ctx context.Context, accountUpdates []*AccountUpdate, storageWrites []*StorageWrite, storageDeletes []*StorageDelete, walletUpdates []*WalletUpdate, updateLedger bool) ([]*api.StorageObjectAck, []*WalletUpdateResult, error)
 
-	LeaderboardCreate(ctx context.Context, id string, authoritative bool, sortOrder, operator, resetSchedule string, metadata map[string]interface{}) error
+	LeaderboardCreate(ctx context.Context, id string, authoritative bool, sortOrder, operator, resetSchedule string, metadata map[string]interface{}, enableRanks bool) error
 	LeaderboardDelete(ctx context.Context, id string) error
-	LeaderboardList(categoryStart, categoryEnd, limit int, cursor string) (*api.LeaderboardList, error)
+	LeaderboardList(limit int, cursor string) (*api.LeaderboardList, error)
+	LeaderboardRanksDisable(ctx context.Context, id string) error
 	LeaderboardRecordsList(ctx context.Context, id string, ownerIDs []string, limit int, cursor string, expiry int64) (records []*api.LeaderboardRecord, ownerRecords []*api.LeaderboardRecord, nextCursor string, prevCursor string, err error)
+	LeaderboardRecordsListCursorFromRank(id string, rank, overrideExpiry int64) (string, error)
 	LeaderboardRecordWrite(ctx context.Context, id, ownerID, username string, score, subscore int64, metadata map[string]interface{}, overrideOperator *int) (*api.LeaderboardRecord, error)
 	LeaderboardRecordDelete(ctx context.Context, id, ownerID string) error
 	LeaderboardsGetId(ctx context.Context, ids []string) ([]*api.Leaderboard, error)
@@ -1083,6 +1138,7 @@ type NakamaModule interface {
 		PrivateKey  string
 	}) (*api.ValidatePurchaseResponse, error)
 	PurchaseValidateHuawei(ctx context.Context, userID, signature, inAppPurchaseData string, persist bool) (*api.ValidatePurchaseResponse, error)
+	PurchaseValidateFacebookInstant(ctx context.Context, userID, signedRequest string, persist bool) (*api.ValidatePurchaseResponse, error)
 	PurchasesList(ctx context.Context, userID string, limit int, cursor string) (*api.PurchaseList, error)
 	PurchaseGetByTransactionId(ctx context.Context, transactionID string) (*api.ValidatedPurchase, error)
 
@@ -1094,12 +1150,13 @@ type NakamaModule interface {
 	SubscriptionsList(ctx context.Context, userID string, limit int, cursor string) (*api.SubscriptionList, error)
 	SubscriptionGetByProductId(ctx context.Context, userID, productID string) (*api.ValidatedSubscription, error)
 
-	TournamentCreate(ctx context.Context, id string, authoritative bool, sortOrder, operator, resetSchedule string, metadata map[string]interface{}, title, description string, category, startTime, endTime, duration, maxSize, maxNumScore int, joinRequired bool) error
+	TournamentCreate(ctx context.Context, id string, authoritative bool, sortOrder, operator, resetSchedule string, metadata map[string]interface{}, title, description string, category, startTime, endTime, duration, maxSize, maxNumScore int, joinRequired, enableRanks bool) error
 	TournamentDelete(ctx context.Context, id string) error
 	TournamentAddAttempt(ctx context.Context, id, ownerID string, count int) error
 	TournamentJoin(ctx context.Context, id, ownerID, username string) error
 	TournamentsGetId(ctx context.Context, tournamentIDs []string) ([]*api.Tournament, error)
 	TournamentList(ctx context.Context, categoryStart, categoryEnd, startTime, endTime, limit int, cursor string) (*api.TournamentList, error)
+	TournamentRanksDisable(ctx context.Context, id string) error
 	TournamentRecordsList(ctx context.Context, tournamentId string, ownerIDs []string, limit int, cursor string, overrideExpiry int64) (records []*api.LeaderboardRecord, ownerRecords []*api.LeaderboardRecord, prevCursor string, nextCursor string, err error)
 	TournamentRecordWrite(ctx context.Context, id, ownerID, username string, score, subscore int64, metadata map[string]interface{}, operatorOverride *int) (*api.LeaderboardRecord, error)
 	TournamentRecordDelete(ctx context.Context, id, ownerID string) error
@@ -1122,6 +1179,7 @@ type NakamaModule interface {
 	UserGroupsList(ctx context.Context, userID string, limit int, state *int, cursor string) ([]*api.UserGroupList_UserGroup, string, error)
 
 	FriendsList(ctx context.Context, userID string, limit int, state *int, cursor string) ([]*api.Friend, string, error)
+	FriendsOfFriendsList(ctx context.Context, userID string, limit int, cursor string) ([]*api.FriendsOfFriendsList_FriendOfFriend, string, error)
 	FriendsAdd(ctx context.Context, userID string, username string, ids []string, usernames []string) error
 	FriendsDelete(ctx context.Context, userID string, username string, ids []string, usernames []string) error
 	FriendsBlock(ctx context.Context, userID string, username string, ids []string, usernames []string) error
@@ -1139,13 +1197,121 @@ type NakamaModule interface {
 	ChannelMessagesList(ctx context.Context, channelId string, limit int, forward bool, cursor string) (messages []*api.ChannelMessage, nextCursor string, prevCursor string, err error)
 
 	GetSatori() Satori
+	GetFleetManager() FleetManager
 }
 
 /*
-Satori runtime integration defintions.
+Nakama fleet manager definitions.
+*/
+type InstanceInfo struct {
+	// A platform-specific unique instance identifier. Identifiers may be recycled for
+	// future use, but the underlying Fleet Manager platform is expected to ensure
+	// uniqueness at least among concurrently running instances.
+	Id string `json:"id"`
+	// Connection information in a platform-specific format, usually "address:port"
+	ConnectionInfo *ConnectionInfo `json:"connection_info"`
+	// When this instance was first created.
+	CreateTime time.Time `json:"create_time"`
+	// Number of active player sessions on the server
+	PlayerCount int `json:"player_count"`
+	// Status
+	Status string `json:"status"`
+	// Application-specific data for use in indexing and listings.
+	Metadata map[string]any `json:"metadata"`
+}
+
+type ConnectionInfo struct {
+	IpAddress string `json:"ip_address"`
+	DnsName   string `json:"dns_name"`
+	Port      int    `json:"port"`
+}
+
+type JoinInfo struct {
+	InstanceInfo *InstanceInfo  `json:"instance_info"`
+	SessionInfo  []*SessionInfo `json:"session_info"`
+}
+
+type SessionInfo struct {
+	UserId    string `json:"user_id"`
+	SessionId string `json:"session_id"`
+}
+
+type FmCreateStatus int
+
+const (
+	// Create successfully created a new game instance.
+	CreateSuccess FmCreateStatus = iota
+	// Create request could not find a suitable instance within the configured timeout.
+	CreateTimeout
+	// Create failed to create a new game instance.
+	CreateError
+)
+
+type FmCallbackHandler interface {
+	// Generate a new callback id.
+	GenerateCallbackId() string
+	// Set the callback indexed by the generated id.
+	SetCallback(callbackId string, fn FmCreateCallbackFn)
+	// Invoke a callback by callback Id.
+	InvokeCallback(callbackId string, status FmCreateStatus, instanceInfo *InstanceInfo, sessionInfo []*SessionInfo, metadata map[string]any, err error)
+}
+
+type FleetUserLatencies struct {
+	// User id
+	UserId string
+	// Latency experienced by the user contacting a server in a fleet instance region.
+	LatencyInMilliseconds float32
+	// Region associated to the experienced latency value.
+	RegionIdentifier string
+}
+
+// FmCreateCallbackFn is the function that is invoked when Create asynchronously succeeds or fails (due to timeout or issues bringing up a new instance).
+// The function params include all the information needed to inform a client with a realtime connection to the server of the status of the Create request,
+// including the new instance connection information in case of success.
+// If status != CreateSuccess, then instanceInfo, sessionInfo and metadata will be nil and err will contain an error message.
+// If no userIds were provided to Create, then sessionInfo will be nil regardless of successful instance creation.
+type FmCreateCallbackFn func(status FmCreateStatus, instanceInfo *InstanceInfo, sessionInfo []*SessionInfo, metadata map[string]any, err error)
+
+type FleetManager interface {
+	// Get retrieves the most up-to-date information about an instance currently running
+	// in the Fleet Manager platform. An error is expected if the instance does not exist,
+	// either because it never existed or it was otherwise removed at some point.
+	Get(ctx context.Context, id string) (instance *InstanceInfo, err error)
+
+	// List retrieves a set of instances, optionally filtered by a platform-specific query.
+	// The limit and previous cursor inputs are used as part of pagination, if supported.
+	List(ctx context.Context, query string, limit int, previousCursor string) (list []*InstanceInfo, nextCursor string, err error)
+
+	// Create issues a request to the underlying Fleet Manager platform to create a new
+	// instance and initialize it with the given metadata. The metadata is expected to be
+	// application-specific and only relevant to the application itself, not the platform.
+	// The instance creation happens asynchronously - the passed callback is invoked once the
+	// creation process was either successful or failed.
+	// If a list of userIds is optionally provided, the new instance (on successful creation) will reserve slots
+	// for the respective clients to connect, and the callback will contain the required []*SessionInfo.
+	// Latencies is optional and its support depends on the Fleet Manager provider.
+	Create(ctx context.Context, maxPlayers int, userIds []string, latencies []FleetUserLatencies, metadata map[string]any, callback FmCreateCallbackFn) (err error)
+
+	// Join reserves a number of player slots in the target instance. These slots are reserved for a minute, after which,
+	// if clients do not connect to the instance to claim them, the returned SessionInfo will become invalid and the
+	// player slots will become available to new player sessions.
+	Join(ctx context.Context, id string, userIds []string, metadata map[string]string) (joinInfo *JoinInfo, err error)
+}
+
+type FleetManagerInitializer interface {
+	FleetManager
+	// Init function - it is called internally by RegisterFleetManager to expose NakamaModule and FmCallbackHandler.
+	// The implementation should keep references to nk and callbackHandler.
+	Init(nk NakamaModule, callbackHandler FmCallbackHandler) error
+	Update(ctx context.Context, id string, playerCount int, metadata map[string]any) error
+	Delete(ctx context.Context, id string) error
+}
+
+/*
+Satori runtime integration definitions.
 */
 type Satori interface {
-	Authenticate(ctx context.Context, id string) error
+	Authenticate(ctx context.Context, id string, ipAddress ...string) error
 	PropertiesGet(ctx context.Context, id string) (*Properties, error)
 	PropertiesUpdate(ctx context.Context, id string, properties *PropertiesUpdate) error
 	EventsPublish(ctx context.Context, id string, events []*Event) error
@@ -1161,8 +1327,9 @@ type Properties struct {
 }
 
 type PropertiesUpdate struct {
-	Default map[string]string `json:"default,omitempty"`
-	Custom  map[string]string `json:"custom,omitempty"`
+	Default   map[string]string `json:"default,omitempty"`
+	Custom    map[string]string `json:"custom,omitempty"`
+	Recompute *bool             `json:"recompute,omitempty"`
 }
 
 type Events struct {
@@ -1204,6 +1371,6 @@ type LiveEvent struct {
 	Name               string `json:"name,omitempty"`
 	Description        string `json:"description,omitempty"`
 	Value              string `json:"value,omitempty"`
-	ActiveStartTimeSec int64  `json:"active_start_time_sec,omitempty"`
-	ActiveEndTimeSec   int64  `json:"active_end_time_sec,omitempty"`
+	ActiveStartTimeSec int64  `json:"active_start_time_sec,string,omitempty"`
+	ActiveEndTimeSec   int64  `json:"active_end_time_sec,string,omitempty"`
 }
