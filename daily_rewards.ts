@@ -21,90 +21,13 @@ function rpcReward(context: nkruntime.Context, logger: nkruntime.Logger, nk: nkr
         throw Error('no input allowed');
     }
 
-    var objectId: nkruntime.StorageReadRequest = {
-        collection: 'reward',
-        key: 'daily',
-        userId: context.userId,
-    }
-    var objects: nkruntime.StorageObject[];
-    try {
-        objects = nk.storageRead([ objectId ]);
-    } catch (error) {
-        logger.error('storageRead error: %s', error);
-        throw error;
-    }
+    let ip = context.clientIp;
 
-    var dailyReward: any = {
-        lastClaimUnix: 0,
-    }
-    objects.forEach(object => {
-        if (object.key == 'daily') {
-            dailyReward = object.value;
-        }
-    });
+    let uuid = nk.uuidv4();
+    logger.info('ctx ip: %s', ip);
+    nk.getSatori().authenticate(uuid, undefined, ip);
 
-    var resp = {
-        coinsReceived: 0,
-    }
-
-    var d = new Date();
-    d.setHours(0,0,0,0);
-
-    // If last claimed is before the new day grant a new reward!
-    if (dailyReward.lastClaimUnix < msecToSec(d.getTime())) {
-        resp.coinsReceived = 500;
-
-        // Update player wallet.
-        var changeset = {
-            coins: resp.coinsReceived,
-        }
-        try {
-            nk.walletUpdate(context.userId, changeset, {}, false);
-        } catch (error) {
-            logger.error('walletUpdate error: %q', error);
-            throw error;
-        }
-
-        var notification: nkruntime.NotificationRequest = {
-            code: 1001,
-            content: changeset,
-            persistent: true,
-            subject: "You've received your daily reward!",
-            userId: context.userId,
-        }
-        try {
-            nk.notificationsSend([notification]);
-        } catch (error) {
-            logger.error('notificationsSend error: %q', error);
-            throw error;
-        }
-
-        dailyReward.lastClaimUnix = msecToSec(Date.now());
-
-        var write: nkruntime.StorageWriteRequest = {
-            collection: 'reward',
-            key: 'daily',
-            permissionRead: 1,
-            permissionWrite: 0,
-            value: dailyReward,
-            userId: context.userId,
-        }
-        if (objects.length > 0) {
-            write.version = objects[0].version
-        }
-
-        try {
-            nk.storageWrite([ write ])
-        } catch (error) {
-            logger.error('storageWrite error: %q', error);
-            throw error;
-        }
-    }
-
-    var result = JSON.stringify(resp);
-    logger.debug('rpcReward resp: %q', result)
-
-    return result;
+    return '';
 }
 
 function msecToSec(n: number): number {

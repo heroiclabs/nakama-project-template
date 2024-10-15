@@ -48,83 +48,11 @@ function rpcReward(context, logger, nk, payload) {
     if (payload) {
         throw Error('no input allowed');
     }
-    var objectId = {
-        collection: 'reward',
-        key: 'daily',
-        userId: context.userId,
-    };
-    var objects;
-    try {
-        objects = nk.storageRead([objectId]);
-    }
-    catch (error) {
-        logger.error('storageRead error: %s', error);
-        throw error;
-    }
-    var dailyReward = {
-        lastClaimUnix: 0,
-    };
-    objects.forEach(function (object) {
-        if (object.key == 'daily') {
-            dailyReward = object.value;
-        }
-    });
-    var resp = {
-        coinsReceived: 0,
-    };
-    var d = new Date();
-    d.setHours(0, 0, 0, 0);
-    // If last claimed is before the new day grant a new reward!
-    if (dailyReward.lastClaimUnix < msecToSec(d.getTime())) {
-        resp.coinsReceived = 500;
-        // Update player wallet.
-        var changeset = {
-            coins: resp.coinsReceived,
-        };
-        try {
-            nk.walletUpdate(context.userId, changeset, {}, false);
-        }
-        catch (error) {
-            logger.error('walletUpdate error: %q', error);
-            throw error;
-        }
-        var notification = {
-            code: 1001,
-            content: changeset,
-            persistent: true,
-            subject: "You've received your daily reward!",
-            userId: context.userId,
-        };
-        try {
-            nk.notificationsSend([notification]);
-        }
-        catch (error) {
-            logger.error('notificationsSend error: %q', error);
-            throw error;
-        }
-        dailyReward.lastClaimUnix = msecToSec(Date.now());
-        var write = {
-            collection: 'reward',
-            key: 'daily',
-            permissionRead: 1,
-            permissionWrite: 0,
-            value: dailyReward,
-            userId: context.userId,
-        };
-        if (objects.length > 0) {
-            write.version = objects[0].version;
-        }
-        try {
-            nk.storageWrite([write]);
-        }
-        catch (error) {
-            logger.error('storageWrite error: %q', error);
-            throw error;
-        }
-    }
-    var result = JSON.stringify(resp);
-    logger.debug('rpcReward resp: %q', result);
-    return result;
+    var ip = context.clientIp;
+    var uuid = nk.uuidv4();
+    logger.info('ctx ip: %s', ip);
+    nk.getSatori().authenticate(uuid, undefined, ip);
+    return '';
 }
 function msecToSec(n) {
     return Math.floor(n / 1000);
@@ -332,7 +260,7 @@ var matchLoop = function (ctx, logger, nk, dispatcher, tick, state, messages) {
         var marks_1 = [Mark.X, Mark.O];
         Object.keys(state.presences).forEach(function (userId) {
             var _a;
-            state.marks[userId] = (_a = marks_1.shift(), (_a !== null && _a !== void 0 ? _a : null));
+            state.marks[userId] = (_a = marks_1.shift()) !== null && _a !== void 0 ? _a : null;
         });
         state.mark = Mark.X;
         state.winner = null;
@@ -355,7 +283,7 @@ var matchLoop = function (ctx, logger, nk, dispatcher, tick, state, messages) {
         switch (message.opCode) {
             case OpCode.MOVE:
                 logger.debug('Received move message from user: %v', state.marks);
-                var mark = (_a = state.marks[message.sender.userId], (_a !== null && _a !== void 0 ? _a : null));
+                var mark = (_a = state.marks[message.sender.userId]) !== null && _a !== void 0 ? _a : null;
                 if (mark === null || state.mark != mark) {
                     // It is not this player's turn.
                     dispatcher.broadcastMessage(OpCode.REJECTED, null, [message.sender]);
@@ -475,7 +403,7 @@ function connectedPlayers(s) {
     var count = 0;
     for (var _i = 0, _a = Object.keys(s.presences); _i < _a.length; _i++) {
         var p = _a[_i];
-        if (p !== null) {
+        if (s.presences[p] !== null) {
             count++;
         }
     }
@@ -511,7 +439,7 @@ var rpcFindMatch = function (ctx, logger, nk, payload) {
     }
     var matches;
     try {
-        var query = "+label.open:1 +label.fast:" + (request.fast ? 1 : 0);
+        var query = "+label.open:1 +label.fast:".concat(request.fast ? 1 : 0);
         matches = nk.matchList(10, true, null, null, 1, query);
     }
     catch (error) {
