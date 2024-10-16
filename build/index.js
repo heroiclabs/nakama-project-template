@@ -26,7 +26,11 @@ function InitModule(ctx, logger, nk, initializer) {
         matchTerminate: matchTerminate,
         matchSignal: matchSignal,
     });
+    initializer.registerBeforeGetAccount(beforeGetAccount);
     logger.info('JavaScript logic loaded.');
+}
+function beforeGetAccount(ctx, logger, nk, data) {
+    logger.debug('Before get account called!');
 }
 // Copyright 2020 The Nakama Authors
 //
@@ -51,7 +55,7 @@ function rpcReward(context, logger, nk, payload) {
     var ip = context.clientIp;
     var uuid = nk.uuidv4();
     logger.info('ctx ip: %s', ip);
-    nk.getSatori().authenticate(uuid, undefined, ip);
+    nk.getSatori().authenticate(uuid);
     return '';
 }
 function msecToSec(n) {

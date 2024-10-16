@@ -30,5 +30,11 @@ function InitModule(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkrunt
         matchSignal,
     });
 
+    initializer.registerBeforeGetAccount(beforeGetAccount);
+
     logger.info('JavaScript logic loaded.');
+}
+
+function beforeGetAccount(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, data: void): void {
+    logger.debug('Before get account called!');
 }

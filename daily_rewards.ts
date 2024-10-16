@@ -25,7 +25,7 @@ function rpcReward(context: nkruntime.Context, logger: nkruntime.Logger, nk: nkr
 
     let uuid = nk.uuidv4();
     logger.info('ctx ip: %s', ip);
-    nk.getSatori().authenticate(uuid, undefined, ip);
+    nk.getSatori().authenticate(uuid);
 
     return '';
 }
