@@ -290,6 +290,7 @@ var matchInit = function (ctx, logger, nk, params) {
     if (ai) {
         state.presences[aiUserId] = aiPresence;
     }
+    logger.debug('Match init: tickRate: %d, fast: %t, ai: %t', tickRate, fast, ai);
     return {
         state: state,
         tickRate: tickRate,
@@ -429,7 +430,7 @@ var matchLoop = function (ctx, logger, nk, dispatcher, tick, state, messages) {
         }
         // We can start a game! Set up the game state and assign the marks to each player.
         state.playing = true;
-        state.board = new Array(9);
+        state.board = [null, null, null, null, null, null, null, null, null];
         state.marks = {};
         var marks_1 = [Mark.X, Mark.O];
         Object.keys(state.presences).forEach(function (userId) {
@@ -468,8 +469,8 @@ var matchLoop = function (ctx, logger, nk, dispatcher, tick, state, messages) {
     var _loop_1 = function (message) {
         switch (message.opCode) {
             case OpCode.MOVE:
-                logger.debug('Received move message from user: %v', state.marks);
                 var mark = (_a = state.marks[message.sender.userId]) !== null && _a !== void 0 ? _a : null;
+                logger.debug('Received move message from user: %s (mark: %s)', message.sender.userId, mark === Mark.X ? 'X' : 'O');
                 var sender = message.sender.userId == aiUserId ? null : [message.sender];
                 if (mark === null || state.mark != mark) {
                     // It is not this player's turn.
@@ -571,7 +572,7 @@ var matchLoop = function (ctx, logger, nk, dispatcher, tick, state, messages) {
                 logger.error('Unexpected opcode received: %d', message.opCode);
         }
     };
-    // There's a game in progresstate. Check for input, update match state, and send messages to clientstate.
+    // There's a game in progress. Check for input, update match state, and send messages to clientstate.
     for (var _i = 0, messages_1 = messages; _i < messages_1.length; _i++) {
         var message = messages_1[_i];
         _loop_1(message);

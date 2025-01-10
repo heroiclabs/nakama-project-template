@@ -99,6 +99,8 @@ let matchInit: nkruntime.MatchInitFunction<State> = function (ctx: nkruntime.Con
         state.presences[aiUserId] = aiPresence;
     }
 
+    logger.debug('Match init: tickRate: %d, fast: %t, ai: %t', tickRate, fast, ai);
+
     return {
         state,
         tickRate,
@@ -253,7 +255,7 @@ let matchLoop: nkruntime.MatchLoopFunction<State> = function(ctx: nkruntime.Cont
 
         // We can start a game! Set up the game state and assign the marks to each player.
         state.playing = true;
-        state.board = new Array(9);
+        state.board = [null,null,null,null,null,null,null,null,null];
         state.marks = {};
         let marks = [Mark.X, Mark.O];
         Object.keys(state.presences).forEach(userId => {
@@ -290,12 +292,12 @@ let matchLoop: nkruntime.MatchLoopFunction<State> = function(ctx: nkruntime.Cont
         state.aiMessage = null;
     }
 
-    // There's a game in progresstate. Check for input, update match state, and send messages to clientstate.
+    // There's a game in progress. Check for input, update match state, and send messages to clientstate.
     for (const message of messages) {
         switch (message.opCode) {
             case OpCode.MOVE:
-                logger.debug('Received move message from user: %v', state.marks);
                 let mark = state.marks[message.sender.userId] ?? null;
+                logger.debug('Received move message from user: %s (mark: %s)', message.sender.userId, mark === Mark.X ? 'X' : 'O');
                 let sender = message.sender.userId == aiUserId ? null : [message.sender];
                 if (mark === null || state.mark != mark) {
                     // It is not this player's turn.

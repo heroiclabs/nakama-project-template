@@ -90,12 +90,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"google.golang.org/protobuf/types/known/timestamppb"
+	"net/http"
 	"os"
 	"time"
 
 	"github.com/heroiclabs/nakama-common/api"
 	"github.com/heroiclabs/nakama-common/rtapi"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -315,6 +316,10 @@ It is made available to the InitModule function as an input parameter when the f
 NOTE: You must not cache the reference to this and reuse it as a later point as this could have unintended side effects.
 */
 type Initializer interface {
+	/*
+		GetConfig returns a read only subset of the Nakama configuration values.
+	*/
+	GetConfig() (Config, error)
 	/*
 		RegisterRpc registers a function with the given ID. This ID can be used within client code to send an RPC message to
 		execute the function and return the result. Results are always returned as a JSON string (or optionally empty string).
@@ -859,10 +864,10 @@ type Initializer interface {
 	// RegisterEventSessionStart can be used to define functions triggered when client sessions start.
 	RegisterEventSessionStart(fn func(ctx context.Context, logger Logger, evt *api.Event)) error
 
-	// RegisterEventSessionStart can be used to define functions triggered when client sessions end.
+	// RegisterEventSessionEnd can be used to define functions triggered when client sessions end.
 	RegisterEventSessionEnd(fn func(ctx context.Context, logger Logger, evt *api.Event)) error
 
-	// Register a new storage index.
+	// RegisterStorageIndex creates a new storage index definition and triggers an indexing process if needed.
 	RegisterStorageIndex(name, collection, key string, fields []string, sortableFields []string, maxEntries int, indexOnly bool) error
 
 	// RegisterStorageIndexFilter can be used to define a filtering function for a given storage index.
@@ -874,6 +879,9 @@ type Initializer interface {
 	// RegisterShutdown can be used to register a function that is executed once the server receives a termination signal.
 	// This function only fires if shutdown_grace_sec > 0 and will be terminated early if its execution takes longer than the configured grace seconds.
 	RegisterShutdown(fn func(ctx context.Context, logger Logger, db *sql.DB, nk NakamaModule)) error
+
+	// RegisterHttp attaches a new HTTP handler to a specified path on the main client API server endpoint.
+	RegisterHttp(pathPattern string, handler func(http.ResponseWriter, *http.Request), methods ...string) error
 }
 
 type PresenceReason uint8
@@ -969,6 +977,13 @@ type Notification struct {
 	Persistent bool
 }
 
+type NotificationUpdate struct {
+	Id      string
+	Subject *string
+	Content map[string]any
+	Sender  *string
+}
+
 type WalletUpdate struct {
 	UserID    string
 	Changeset map[string]int64
@@ -1054,6 +1069,7 @@ type NakamaModule interface {
 
 	UsersGetId(ctx context.Context, userIDs []string, facebookIDs []string) ([]*api.User, error)
 	UsersGetUsername(ctx context.Context, usernames []string) ([]*api.User, error)
+	UsersGetFriendStatus(ctx context.Context, userID string, userIDs []string) ([]*api.Friend, error)
 	UsersGetRandom(ctx context.Context, count int) ([]*api.User, error)
 	UsersBanId(ctx context.Context, userIDs []string) error
 	UsersUnbanId(ctx context.Context, userIDs []string) error
@@ -1102,8 +1118,10 @@ type NakamaModule interface {
 	MatchSignal(ctx context.Context, id string, data string) (string, error)
 
 	NotificationSend(ctx context.Context, userID, subject string, content map[string]interface{}, code int, sender string, persistent bool) error
+	NotificationsList(ctx context.Context, userID string, limit int, cursor string) ([]*api.Notification, string, error)
 	NotificationsSend(ctx context.Context, notifications []*NotificationSend) error
 	NotificationSendAll(ctx context.Context, subject string, content map[string]interface{}, code int, persistent bool) error
+	NotificationsUpdate(ctx context.Context, updates ...NotificationUpdate) error
 	NotificationsDelete(ctx context.Context, notifications []*NotificationDelete) error
 	NotificationsGetId(ctx context.Context, userID string, ids []string) ([]*Notification, error)
 	NotificationsDeleteId(ctx context.Context, userID string, ids []string) error
@@ -1117,7 +1135,7 @@ type NakamaModule interface {
 	StorageRead(ctx context.Context, reads []*StorageRead) ([]*api.StorageObject, error)
 	StorageWrite(ctx context.Context, writes []*StorageWrite) ([]*api.StorageObjectAck, error)
 	StorageDelete(ctx context.Context, deletes []*StorageDelete) error
-	StorageIndexList(ctx context.Context, callerID, indexName, query string, limit int, order []string) (*api.StorageObjects, error)
+	StorageIndexList(ctx context.Context, callerID, indexName, query string, limit int, order []string, cursor string) (*api.StorageObjects, string, error)
 
 	MultiUpdate(ctx context.Context, accountUpdates []*AccountUpdate, storageWrites []*StorageWrite, storageDeletes []*StorageDelete, walletUpdates []*WalletUpdate, updateLedger bool) ([]*api.StorageObjectAck, []*WalletUpdateResult, error)
 
@@ -1195,6 +1213,9 @@ type NakamaModule interface {
 	ChannelMessageUpdate(ctx context.Context, channelID, messageID string, content map[string]interface{}, senderId, senderUsername string, persist bool) (*rtapi.ChannelMessageAck, error)
 	ChannelMessageRemove(ctx context.Context, channelId, messageId string, senderId, senderUsername string, persist bool) (*rtapi.ChannelMessageAck, error)
 	ChannelMessagesList(ctx context.Context, channelId string, limit int, forward bool, cursor string) (messages []*api.ChannelMessage, nextCursor string, prevCursor string, err error)
+
+	StatusFollow(sessionID string, userIDs []string) error
+	StatusUnfollow(sessionID string, userIDs []string) error
 
 	GetSatori() Satori
 	GetFleetManager() FleetManager
@@ -1311,13 +1332,16 @@ type FleetManagerInitializer interface {
 Satori runtime integration definitions.
 */
 type Satori interface {
-	Authenticate(ctx context.Context, id string, ipAddress ...string) error
+	Authenticate(ctx context.Context, id string, defaultProperties, customProperties map[string]string, ipAddress ...string) error
 	PropertiesGet(ctx context.Context, id string) (*Properties, error)
 	PropertiesUpdate(ctx context.Context, id string, properties *PropertiesUpdate) error
 	EventsPublish(ctx context.Context, id string, events []*Event) error
 	ExperimentsList(ctx context.Context, id string, names ...string) (*ExperimentList, error)
 	FlagsList(ctx context.Context, id string, names ...string) (*FlagList, error)
 	LiveEventsList(ctx context.Context, id string, names ...string) (*LiveEventList, error)
+	MessagesList(ctx context.Context, id string, limit int, forward bool, cursor string) (*MessageList, error)
+	MessageUpdate(ctx context.Context, id, messageId string, readTime, consumeTime int64) error
+	MessageDelete(ctx context.Context, id, messageId string) error
 }
 
 type Properties struct {
@@ -1373,4 +1397,35 @@ type LiveEvent struct {
 	Value              string `json:"value,omitempty"`
 	ActiveStartTimeSec int64  `json:"active_start_time_sec,string,omitempty"`
 	ActiveEndTimeSec   int64  `json:"active_end_time_sec,string,omitempty"`
+	Id                 string `json:"id,omitempty"`
+	StartTimeSec       int64  `json:"start_time_sec,string,omitempty"`
+	EndTimeSec         int64  `json:"end_time_sec,string,omitempty"`
+	DurationSec        int64  `json:"duration_sec,string,omitempty"`
+	ResetCronExpr      string `json:"reset_cron,omitempty"`
+}
+
+type MessageList struct {
+	Messages        []*Message `json:"messages,omitempty"`
+	NextCursor      string     `json:"next_cursor,omitempty"`
+	PrevCursor      string     `json:"prev_cursor,omitempty"`
+	CacheableCursor string     `json:"cacheable_cursor,omitempty"`
+}
+
+type Message struct {
+	ScheduleId  string         `json:"schedule_id,omitempty"`
+	SendTime    int64          `json:"send_time,string,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
+	CreateTime  int64          `json:"create_time,string,omitempty"`
+	UpdateTime  int64          `json:"update_time,string,omitempty"`
+	ReadTime    int64          `json:"read_time,string,omitempty"`
+	ConsumeTime int64          `json:"consume_time,string,omitempty"`
+	Text        string         `json:"text,omitempty"`
+	Id          string         `json:"id,omitempty"`
+	Title       string         `json:"title,omitempty"`
+	ImageUrl    string         `json:"image_url,omitempty"`
+}
+
+type MessageUpdate struct {
+	ReadTime    int64 `json:"read_time,omitempty"`
+	ConsumeTime int64 `json:"consume_time,omitempty"`
 }
