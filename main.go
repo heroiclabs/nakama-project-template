@@ -20,6 +20,19 @@ import (
 	"github.com/heroiclabs/nakama-common/runtime"
 	"google.golang.org/protobuf/encoding/protojson"
 	"time"
+
+	_ "github.com/RoaringBitmap/roaring"
+	_ "github.com/axiomhq/hyperloglog"
+	_ "github.com/bits-and-blooms/bitset"
+	_ "github.com/blevesearch/mmap-go"
+	_ "github.com/blevesearch/segment"
+	_ "github.com/blevesearch/vellum"
+	_ "github.com/blugelabs/bluge"
+	_ "github.com/dgryski/go-metro"
+	_ "github.com/golang/snappy"
+	_ "github.com/klauspost/compress"
+	_ "golang.org/x/crypto/pbkdf2"
+	_ "golang.org/x/text/transform"
 )
 
 var (
