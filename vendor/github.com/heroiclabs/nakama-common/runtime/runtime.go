@@ -1196,9 +1196,10 @@ type NakamaModule interface {
 	GroupsGetRandom(ctx context.Context, count int) ([]*api.Group, error)
 	UserGroupsList(ctx context.Context, userID string, limit int, state *int, cursor string) ([]*api.UserGroupList_UserGroup, string, error)
 
+	FriendMetadataUpdate(ctx context.Context, userID string, friendUserId string, metadata map[string]any) error
 	FriendsList(ctx context.Context, userID string, limit int, state *int, cursor string) ([]*api.Friend, string, error)
 	FriendsOfFriendsList(ctx context.Context, userID string, limit int, cursor string) ([]*api.FriendsOfFriendsList_FriendOfFriend, string, error)
-	FriendsAdd(ctx context.Context, userID string, username string, ids []string, usernames []string) error
+	FriendsAdd(ctx context.Context, userID string, username string, ids []string, usernames []string, metadata map[string]any) error
 	FriendsDelete(ctx context.Context, userID string, username string, ids []string, usernames []string) error
 	FriendsBlock(ctx context.Context, userID string, username string, ids []string, usernames []string) error
 
@@ -1332,10 +1333,10 @@ type FleetManagerInitializer interface {
 Satori runtime integration definitions.
 */
 type Satori interface {
-	Authenticate(ctx context.Context, id string, defaultProperties, customProperties map[string]string, ipAddress ...string) error
+	Authenticate(ctx context.Context, id string, defaultProperties, customProperties map[string]string, noSession bool, ipAddress ...string) (*Properties, error)
 	PropertiesGet(ctx context.Context, id string) (*Properties, error)
 	PropertiesUpdate(ctx context.Context, id string, properties *PropertiesUpdate) error
-	EventsPublish(ctx context.Context, id string, events []*Event) error
+	EventsPublish(ctx context.Context, id string, events []*Event, ipAddress ...string) error
 	ExperimentsList(ctx context.Context, id string, names ...string) (*ExperimentList, error)
 	FlagsList(ctx context.Context, id string, names ...string) (*FlagList, error)
 	LiveEventsList(ctx context.Context, id string, names ...string) (*LiveEventList, error)
