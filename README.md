@@ -125,7 +125,7 @@ To join one of these matches check our [matchmaker documentation](https://heroic
 
 ### AI/ML model
 
-In addition to starting Nakama and database, `docker compose.yml` file
+In addition to starting Nakama and database, `docker-compose.yml` file
 also defines the `tf` container, an instance of [TFX](https://www.tensorflow.org/tfx) (formerly known as `Tensorflow Serving`), a service to serve
 pre-trained machine learning models.
 The model itself is located in the [./model](./model) directory.
