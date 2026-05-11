@@ -20,6 +20,8 @@ function InitModule(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkrunt
 
     initializer.registerRpc(rpcIdFindMatch, rpcFindMatch);
 
+    initializer.registerRpc('print_headers', printHeaders);
+
     initializer.registerMatch(moduleName, {
         matchInit,
         matchJoinAttempt,
@@ -31,4 +33,18 @@ function InitModule(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkrunt
     });
 
     logger.info('JavaScript logic loaded.');
+}
+
+
+function printHeaders(context: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
+    if (!context.userId) {
+        throw Error('No user ID in context');
+    }
+
+    logger.info('x-forwarded-for headers: %s', JSON.stringify(context.headers!['x-forwarded-for']));
+
+    let satori = nk.getSatori()
+    satori.authenticate(context.userId);
+
+    return '';
 }

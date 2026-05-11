@@ -12,6 +12,7 @@
       "./node_modules"
     ],
     "outFile": "./build/index.js",
+    "types": ["nakama-runtime"],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,

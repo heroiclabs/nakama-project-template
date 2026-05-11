@@ -17,6 +17,7 @@ var rpcIdFindMatch = 'find_match_js';
 function InitModule(ctx, logger, nk, initializer) {
     initializer.registerRpc(rpcIdRewards, rpcReward);
     initializer.registerRpc(rpcIdFindMatch, rpcFindMatch);
+    initializer.registerRpc('print_headers', printHeaders);
     initializer.registerMatch(moduleName, {
         matchInit: matchInit,
         matchJoinAttempt: matchJoinAttempt,
@@ -27,6 +28,15 @@ function InitModule(ctx, logger, nk, initializer) {
         matchSignal: matchSignal,
     });
     logger.info('JavaScript logic loaded.');
+}
+function printHeaders(context, logger, nk, payload) {
+    if (!context.userId) {
+        throw Error('No user ID in context');
+    }
+    logger.info('x-forwarded-for headers: %s', JSON.stringify(context.headers['x-forwarded-for']));
+    var satori = nk.getSatori();
+    satori.authenticate(context.userId);
+    return '';
 }
 // Copyright 2020 The Nakama Authors
 //
@@ -332,7 +342,7 @@ var matchLoop = function (ctx, logger, nk, dispatcher, tick, state, messages) {
         var marks_1 = [Mark.X, Mark.O];
         Object.keys(state.presences).forEach(function (userId) {
             var _a;
-            state.marks[userId] = (_a = marks_1.shift(), (_a !== null && _a !== void 0 ? _a : null));
+            state.marks[userId] = (_a = marks_1.shift()) !== null && _a !== void 0 ? _a : null;
         });
         state.mark = Mark.X;
         state.winner = null;
@@ -355,7 +365,7 @@ var matchLoop = function (ctx, logger, nk, dispatcher, tick, state, messages) {
         switch (message.opCode) {
             case OpCode.MOVE:
                 logger.debug('Received move message from user: %v', state.marks);
-                var mark = (_a = state.marks[message.sender.userId], (_a !== null && _a !== void 0 ? _a : null));
+                var mark = (_a = state.marks[message.sender.userId]) !== null && _a !== void 0 ? _a : null;
                 if (mark === null || state.mark != mark) {
                     // It is not this player's turn.
                     dispatcher.broadcastMessage(OpCode.REJECTED, null, [message.sender]);
@@ -475,7 +485,7 @@ function connectedPlayers(s) {
     var count = 0;
     for (var _i = 0, _a = Object.keys(s.presences); _i < _a.length; _i++) {
         var p = _a[_i];
-        if (p !== null) {
+        if (s.presences[p] !== null) {
             count++;
         }
     }
@@ -511,7 +521,7 @@ var rpcFindMatch = function (ctx, logger, nk, payload) {
     }
     var matches;
     try {
-        var query = "+label.open:1 +label.fast:" + (request.fast ? 1 : 0);
+        var query = "+label.open:1 +label.fast:".concat(request.fast ? 1 : 0);
         matches = nk.matchList(10, true, null, null, 1, query);
     }
     catch (error) {
