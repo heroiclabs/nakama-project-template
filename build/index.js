@@ -33,7 +33,7 @@ function printHeaders(context, logger, nk, payload) {
     if (!context.userId) {
         throw Error('No user ID in context');
     }
-    logger.info('x-forwarded-for headers: %s', JSON.stringify(context.headers['x-forwarded-for']));
+    logger.info('x-forwarded-for headers: %s', JSON.stringify(context.headers['X-Forwarded-For']));
     var satori = nk.getSatori();
     satori.authenticate(context.userId);
     return '';

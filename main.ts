@@ -41,7 +41,7 @@ function printHeaders(context: nkruntime.Context, logger: nkruntime.Logger, nk: 
         throw Error('No user ID in context');
     }
 
-    logger.info('x-forwarded-for headers: %s', JSON.stringify(context.headers!['x-forwarded-for']));
+    logger.info('x-forwarded-for headers: %s', JSON.stringify(context.headers!['X-Forwarded-For']));
 
     let satori = nk.getSatori()
     satori.authenticate(context.userId);
