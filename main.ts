@@ -42,6 +42,7 @@ function printHeaders(context: nkruntime.Context, logger: nkruntime.Logger, nk: 
     }
 
     logger.info('x-forwarded-for headers: %s', JSON.stringify(context.headers!['X-Forwarded-For']));
+    logger.info('client IP: %s', context.clientIp)
 
     let satori = nk.getSatori()
     satori.authenticate(context.userId);

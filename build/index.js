@@ -34,6 +34,7 @@ function printHeaders(context, logger, nk, payload) {
         throw Error('No user ID in context');
     }
     logger.info('x-forwarded-for headers: %s', JSON.stringify(context.headers['X-Forwarded-For']));
+    logger.info('client IP: %s', context.clientIp);
     var satori = nk.getSatori();
     satori.authenticate(context.userId);
     return '';
