@@ -32,20 +32,35 @@ function InitModule(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkrunt
         matchSignal,
     });
 
+    initializer.registerAfterAuthenticateDevice(authDeviceAfterFn);
+
     logger.info('JavaScript logic loaded.');
 }
 
 
-function printHeaders(context: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
-    if (!context.userId) {
+function printHeaders(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, payload: string): string {
+    if (!ctx.userId) {
         throw Error('No user ID in context');
     }
 
-    logger.info('x-forwarded-for headers: %s', JSON.stringify(context.headers!['X-Forwarded-For']));
-    logger.info('client IP: %s', context.clientIp)
+    logger.info('x-forwarded-for headers: %s', JSON.stringify(ctx.headers!['X-Forwarded-For']));
+    logger.info('client IP: %s', ctx.clientIp)
 
     let satori = nk.getSatori()
-    satori.authenticate(context.userId);
+    satori.authenticate(ctx.userId);
 
     return '';
+}
+
+
+function authDeviceAfterFn(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, data: nkruntime.Session, request: nkruntime.AuthenticateDeviceRequest) {
+    if (!ctx.userId) {
+        throw Error('No user ID in context');
+    }
+
+    logger.info('x-forwarded-for headers: %s', JSON.stringify(ctx.headers!['X-Forwarded-For']));
+    logger.info('client IP: %s', ctx.clientIp)
+
+    let satori = nk.getSatori()
+    satori.authenticate(ctx.userId);
 }

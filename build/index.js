@@ -27,17 +27,27 @@ function InitModule(ctx, logger, nk, initializer) {
         matchTerminate: matchTerminate,
         matchSignal: matchSignal,
     });
+    initializer.registerAfterAuthenticateDevice(authDeviceAfterFn);
     logger.info('JavaScript logic loaded.');
 }
-function printHeaders(context, logger, nk, payload) {
-    if (!context.userId) {
+function printHeaders(ctx, logger, nk, payload) {
+    if (!ctx.userId) {
         throw Error('No user ID in context');
     }
-    logger.info('x-forwarded-for headers: %s', JSON.stringify(context.headers['X-Forwarded-For']));
-    logger.info('client IP: %s', context.clientIp);
+    logger.info('x-forwarded-for headers: %s', JSON.stringify(ctx.headers['X-Forwarded-For']));
+    logger.info('client IP: %s', ctx.clientIp);
     var satori = nk.getSatori();
-    satori.authenticate(context.userId);
+    satori.authenticate(ctx.userId);
     return '';
+}
+function authDeviceAfterFn(ctx, logger, nk, data, request) {
+    if (!ctx.userId) {
+        throw Error('No user ID in context');
+    }
+    logger.info('x-forwarded-for headers: %s', JSON.stringify(ctx.headers['X-Forwarded-For']));
+    logger.info('client IP: %s', ctx.clientIp);
+    var satori = nk.getSatori();
+    satori.authenticate(ctx.userId);
 }
 // Copyright 2020 The Nakama Authors
 //
