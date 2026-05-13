@@ -41,10 +41,16 @@ function printHeaders(ctx, logger, nk, payload) {
     return '';
 }
 function authDeviceAfterFn(ctx, logger, nk, data, request) {
+    var _a;
     if (!ctx.userId) {
         throw Error('No user ID in context');
     }
-    logger.info('x-forwarded-for headers: %s', JSON.stringify(ctx.headers['X-Forwarded-For']));
+    var fwdHeaders = (_a = ctx.headers) === null || _a === void 0 ? void 0 : _a['X-Forwarded-For'];
+    var fwdHeadersStr = 'none';
+    if (fwdHeaders) {
+        fwdHeadersStr = JSON.stringify(fwdHeaders);
+    }
+    logger.info('x-forwarded-for headers: %s', fwdHeadersStr);
     logger.info('client IP: %s', ctx.clientIp);
     var satori = nk.getSatori();
     satori.authenticate(ctx.userId);

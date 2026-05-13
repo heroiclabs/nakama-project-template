@@ -58,7 +58,12 @@ function authDeviceAfterFn(ctx: nkruntime.Context, logger: nkruntime.Logger, nk:
         throw Error('No user ID in context');
     }
 
-    logger.info('x-forwarded-for headers: %s', JSON.stringify(ctx.headers!['X-Forwarded-For']));
+    let fwdHeaders = ctx.headers?.['X-Forwarded-For'];
+    let fwdHeadersStr = 'none';
+    if (fwdHeaders) {
+        fwdHeadersStr = JSON.stringify(fwdHeaders);
+    }
+    logger.info('x-forwarded-for headers: %s', fwdHeadersStr);
     logger.info('client IP: %s', ctx.clientIp)
 
     let satori = nk.getSatori()
